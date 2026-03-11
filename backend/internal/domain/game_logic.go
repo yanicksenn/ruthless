@@ -26,7 +26,7 @@ func StartGame(game *pb.Game, session *pb.Session, allCards map[string]*pb.Card,
 	if game.State != pb.GameState_GAME_STATE_WAITING {
 		return ErrGameNotWaiting
 	}
-	if len(session.Players) < 3 {
+	if len(session.PlayerIds) < 3 {
 		// Just for testing, maybe no strict player limit but typical is 3
 		// We'll allow 2 for easier testing
 	}
@@ -70,8 +70,8 @@ func StartGame(game *pb.Game, session *pb.Session, allCards map[string]*pb.Card,
 	game.HiddenHands = make(map[string]*pb.PlayerHand)
 	game.Scores = make(map[string]uint32)
 
-	for _, p := range session.Players {
-		game.Scores[p.Id] = 0
+	for _, pid := range session.PlayerIds {
+		game.Scores[pid] = 0
 		hand := &pb.PlayerHand{Cards: make([]*pb.Card, 0)}
 		for i := 0; i < HandSize; i++ {
 			if len(game.HiddenWhiteDeck) > 0 {
@@ -79,15 +79,15 @@ func StartGame(game *pb.Game, session *pb.Session, allCards map[string]*pb.Card,
 				game.HiddenWhiteDeck = game.HiddenWhiteDeck[1:]
 			}
 		}
-		game.HiddenHands[p.Id] = hand
+		game.HiddenHands[pid] = hand
 	}
 
 	// Start round 1
-	startNewRound(game, session.Players)
+	startNewRound(game, session.PlayerIds)
 	return nil
 }
 
-func startNewRound(game *pb.Game, players []*pb.Player) {
+func startNewRound(game *pb.Game, playerIDs []string) {
 	if len(game.HiddenBlackDeck) == 0 {
 		game.State = pb.GameState_GAME_STATE_FINISHED
 		return
@@ -96,8 +96,8 @@ func startNewRound(game *pb.Game, players []*pb.Player) {
 	bc := game.HiddenBlackDeck[0]
 	game.HiddenBlackDeck = game.HiddenBlackDeck[1:]
 
-	czarIdx := len(game.Rounds) % len(players)
-	czar := players[czarIdx].Id
+	czarIdx := len(game.Rounds) % len(playerIDs)
+	czar := playerIDs[czarIdx]
 
 	round := &pb.Round{
 		Id:        uuid.New().String(),
@@ -209,7 +209,7 @@ func SelectWinner(game *pb.Game, session *pb.Session, czarID, playID string) err
 	currentRound.WinningPlayId = winningPlay.Id
 	game.Scores[winningPlay.PlayerId]++
 
-	startNewRound(game, session.Players)
+	startNewRound(game, session.PlayerIds)
 	return nil
 }
 

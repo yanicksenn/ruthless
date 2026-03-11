@@ -12,10 +12,10 @@ func TestSession_AddPlayer(t *testing.T) {
 	session := domain.NewSession()
 	player := domain.NewPlayer("Alice")
 
-	domain.AddPlayerToSession(session, player)
+	domain.AddPlayerToSession(session, player.Id)
 
-	assert.Len(t, session.Players, 1)
-	assert.Equal(t, "Alice", session.Players[0].Name)
+	assert.Len(t, session.PlayerIds, 1)
+	assert.Equal(t, player.Id, session.PlayerIds[0])
 }
 
 func TestSession_AddDeck(t *testing.T) {

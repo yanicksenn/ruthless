@@ -41,10 +41,20 @@
   "sessions": [
     {
       "id": "seeding-demonstration",
+      "player_ids": [
+        "Alice",
+        "Bob"
+      ],
       "deck_ids": [
         "deck-1"
       ]
     }
   ],
-  "games": []
+  "games": [
+    {
+      "id": "game-1",
+      "session_id": "seeding-demonstration",
+      "state": 1
+    }
+  ]
 }

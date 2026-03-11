@@ -30,7 +30,7 @@ message Deck {
 
 message Session {
   string id = 1;
-  repeated Player players = 2;
+  repeated string player_ids = 2;
   repeated string deck_ids = 3;
 }
 

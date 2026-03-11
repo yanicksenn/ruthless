@@ -68,7 +68,7 @@ func TestMemoryStorage_Sessions(t *testing.T) {
 	}
 
 	// Update session
-	sess.Players = append(sess.Players, domain.NewPlayer("Alice"))
+	sess.PlayerIds = append(sess.PlayerIds, "player-1")
 	err = store.UpdateSession(ctx, sess)
 	if err != nil {
 		t.Fatalf("Failed to update session: %v", err)
@@ -79,7 +79,7 @@ func TestMemoryStorage_Sessions(t *testing.T) {
 		t.Fatalf("Failed to get updated session: %v", err)
 	}
 
-	if len(retrieved.Players) != 1 {
-		t.Errorf("Expected 1 player, got %d", len(retrieved.Players))
+	if len(retrieved.PlayerIds) != 1 {
+		t.Errorf("Expected 1 player, got %d", len(retrieved.PlayerIds))
 	}
 }

@@ -79,7 +79,7 @@ var playJoinCmd = &cobra.Command{
 			log.Fatalf("Failed to join session: %v", err)
 		}
 
-		fmt.Printf("Successfully joined session:\nID: %s\nPlayers: %d\n", resp.Id, len(resp.Players))
+		fmt.Printf("Successfully joined session:\nID: %s\nPlayers: %d\n", resp.Id, len(resp.PlayerIds))
 	},
 }
 

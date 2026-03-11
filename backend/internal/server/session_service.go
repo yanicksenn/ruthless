@@ -24,8 +24,12 @@ func (s *Server) JoinSession(ctx context.Context, req *pb.JoinSessionRequest) (*
 		return nil, status.Errorf(codes.NotFound, "session not found")
 	}
 
-	player := domain.NewPlayer(req.PlayerName)
-	domain.AddPlayerToSession(session, player)
+	user := domain.NewUser(req.PlayerName)
+	if err := s.store.CreateUser(ctx, user); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to create user")
+	}
+
+	domain.AddPlayerToSession(session, user.Id)
 
 	if err := s.store.UpdateSession(ctx, session); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to update session")

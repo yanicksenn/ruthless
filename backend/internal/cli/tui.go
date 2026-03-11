@@ -175,14 +175,7 @@ func (m model) View() string {
 	s.WriteString(infoStyle.Render("Scores:"))
 	s.WriteString("\n")
 	for playerID, score := range m.game.Scores {
-		playerName := playerID
-		for _, p := range m.session.Players {
-			if p.Id == playerID {
-				playerName = p.Name
-				break
-			}
-		}
-		s.WriteString(fmt.Sprintf("  %s: %d\n", playerName, score))
+		s.WriteString(fmt.Sprintf("  %s: %d\n", playerID, score))
 	}
 	s.WriteString("\n")
 
@@ -192,21 +185,14 @@ func (m model) View() string {
 		s.WriteString( lipgloss.NewStyle().Foreground(lipgloss.Color("214")).Render("--- Current Round ---") )
 		s.WriteString("\n")
 		
-		czarName := round.CzarId
-		for _, p := range m.session.Players {
-			if p.Id == round.CzarId {
-				czarName = p.Name
-				break
-			}
-		}
-		s.WriteString(fmt.Sprintf("Czar: %s\n", czarName))
+		s.WriteString(fmt.Sprintf("Czar: %s\n", round.CzarId))
 		
 		if round.BlackCard != nil {
 			s.WriteString(cardStyle.Render(fmt.Sprintf("BLACK CARD:\n%s", round.BlackCard.Text)))
 			s.WriteString("\n\n")
 		}
 
-		s.WriteString(fmt.Sprintf("Plays: %d / %d players\n", len(round.Plays), len(m.session.Players)-1))
+		s.WriteString(fmt.Sprintf("Plays: %d / %d players\n", len(round.Plays), len(m.session.PlayerIds)-1))
 	}
 
 	// Your Hand
