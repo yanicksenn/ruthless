@@ -12,19 +12,26 @@ import (
 )
 
 type SeedData struct {
+	Users    []SeedUser    `json:"users"`
 	Cards    []SeedCard    `json:"cards"`
 	Decks    []SeedDeck    `json:"decks"`
 	Sessions []SeedSession `json:"sessions"`
 }
 
+type SeedUser struct {
+	Id   string `json:"id"`
+	Name string `json:"name"`
+}
+
 type SeedCard struct {
+	Id   string `json:"id"`
 	Text string `json:"text"`
 }
 
 type SeedDeck struct {
-	Name      string   `json:"name"`
-	OwnerId   string   `json:"owner_id"`
-	CardTexts []string `json:"card_texts"`
+	Name    string   `json:"name"`
+	OwnerId string   `json:"owner_id"`
+	CardIds []string `json:"card_ids"`
 }
 
 type SeedSession struct {
@@ -43,24 +50,38 @@ func LoadSeed(ctx context.Context, store storage.Storage, filePath string) error
 		return fmt.Errorf("failed to parse seed JSON: %w", err)
 	}
 
+	// 0. Create Users
+	for _, su := range seed.Users {
+		user := &pb.User{
+			Id:   su.Id,
+			Name: su.Name,
+		}
+		if err := store.CreateUser(ctx, user); err != nil {
+			return fmt.Errorf("failed to seed user %q: %w", su.Name, err)
+		}
+	}
+
 	// 1. Create Cards
-	textToCard := make(map[string]*pb.Card)
+	idToCard := make(map[string]*pb.Card)
 	for _, sc := range seed.Cards {
 		card, _ := domain.NewCard(sc.Text)
+		if sc.Id != "" {
+			card.Id = sc.Id
+		}
 		if err := store.CreateCard(ctx, card); err != nil {
 			return fmt.Errorf("failed to seed card %q: %w", sc.Text, err)
 		}
-		textToCard[sc.Text] = card
+		idToCard[card.Id] = card
 	}
 
 	// 2. Create Decks
 	nameToDeck := make(map[string]*pb.Deck)
 	for _, sd := range seed.Decks {
 		deck := domain.NewDeck(sd.Name, sd.OwnerId)
-		for _, ct := range sd.CardTexts {
-			card, ok := textToCard[ct]
+		for _, cid := range sd.CardIds {
+			card, ok := idToCard[cid]
 			if !ok {
-				return fmt.Errorf("card text %q not found for deck %q", ct, sd.Name)
+				return fmt.Errorf("card id %q not found for deck %q", cid, sd.Name)
 			}
 			domain.AddCardToDeck(deck, sd.OwnerId, card)
 		}

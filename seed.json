@@ -1,21 +1,25 @@
 {
+  "users": [
+    { "id": "Alice", "name": "Alice" },
+    { "id": "Bob", "name": "Bob" }
+  ],
   "cards": [
-    { "text": "A big black ___" },
-    { "text": "The feeling of being watched by a ___" },
-    { "text": "White card 1" },
-    { "text": "White card 2" },
-    { "text": "White card 3" }
+    { "id": "black-1", "text": "A big black ___" },
+    { "id": "black-2", "text": "The feeling of being watched by a ___" },
+    { "id": "white-1", "text": "White card 1" },
+    { "id": "white-2", "text": "White card 2" },
+    { "id": "white-3", "text": "White card 3" }
   ],
   "decks": [
     {
       "name": "Default Deck",
-      "owner_id": "system",
-      "card_texts": [
-        "A big black ___",
-        "The feeling of being watched by a ___",
-        "White card 1",
-        "White card 2",
-        "White card 3"
+      "owner_id": "Alice",
+      "card_ids": [
+        "black-1",
+        "black-2",
+        "white-1",
+        "white-2",
+        "white-3"
       ]
     }
   ],

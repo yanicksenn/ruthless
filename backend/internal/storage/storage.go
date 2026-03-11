@@ -17,6 +17,9 @@ type Storage interface {
 	GetCard(ctx context.Context, id string) (*pb.Card, error)
 	ListCards(ctx context.Context) ([]*pb.Card, error)
 
+	// User operations
+	CreateUser(ctx context.Context, user *pb.User) error
+
 	// Session operations
 	CreateSession(ctx context.Context, session *pb.Session) error
 	GetSession(ctx context.Context, id string) (*pb.Session, error)

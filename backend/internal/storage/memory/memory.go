@@ -10,6 +10,7 @@ import (
 
 type Storage struct {
 	mu       sync.RWMutex
+	users    map[string]*pb.User
 	cards    map[string]*pb.Card
 	sessions map[string]*pb.Session
 	decks    map[string]*pb.Deck
@@ -18,6 +19,7 @@ type Storage struct {
 
 func New() *Storage {
 	return &Storage{
+		users:    make(map[string]*pb.User),
 		cards:    make(map[string]*pb.Card),
 		sessions: make(map[string]*pb.Session),
 		decks:    make(map[string]*pb.Deck),
@@ -30,6 +32,24 @@ func (s *Storage) CreateCard(ctx context.Context, card *pb.Card) error {
 	defer s.mu.Unlock()
 	s.cards[card.Id] = card
 	return nil
+}
+
+// -- User Methods
+func (s *Storage) CreateUser(ctx context.Context, user *pb.User) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.users[user.Id] = user
+	return nil
+}
+
+func (s *Storage) GetUser(ctx context.Context, id string) (*pb.User, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	user, ok := s.users[id]
+	if !ok {
+		return nil, storage.ErrNotFound
+	}
+	return user, nil
 }
 
 func (s *Storage) GetCard(ctx context.Context, id string) (*pb.Card, error) {
