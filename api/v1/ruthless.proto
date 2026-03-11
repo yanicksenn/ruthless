@@ -25,13 +25,13 @@ message Deck {
   string name = 2;
   string owner_id = 3;
   repeated string contributors = 4;
-  repeated Card cards = 5;
+  repeated string card_ids = 5;
 }
 
 message Session {
   string id = 1;
   repeated Player players = 2;
-  repeated Deck decks = 3;
+  repeated string deck_ids = 3;
 }
 
 enum GameState {
@@ -116,7 +116,7 @@ message RemoveContributorResponse {}
 
 message AddCardToDeckRequest {
   string deck_id = 1;
-  Card card = 2;
+  string card_id = 2;
 }
 message AddCardToDeckResponse {}
 

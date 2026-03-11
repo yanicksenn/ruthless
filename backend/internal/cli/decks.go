@@ -66,36 +66,16 @@ var decksAddCardCmd = &cobra.Command{
 		deckID := args[0]
 		cardID := args[1]
 
-		// First, get the card to pass to AddCardToDeck
 		conn, err := grpc.NewClient(grpcHost, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
 			log.Fatalf("Failed to connect: %v", err)
 		}
 		defer conn.Close()
 
-		clientCards := pb.NewCardServiceClient(conn)
-
-		ctxCards, cancelCards := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancelCards()
-		cardsResp, err := clientCards.ListCards(ctxCards, &pb.ListCardsRequest{})
-		if err != nil {
-			log.Fatalf("Failed to list cards: %v", err)
-		}
-
-		var targetCard *pb.Card
-		for _, c := range cardsResp.Cards {
-			if c.Id == cardID {
-				targetCard = c
-				break
-			}
-		}
-		if targetCard == nil {
-			log.Fatalf("Card with ID %s not found", cardID)
-		}
-
 		client := pb.NewDeckServiceClient(conn)
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
+		
 		token, _ := cmd.Flags().GetString("token")
 		if token != "" {
 			ctx = metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+token)
@@ -103,7 +83,7 @@ var decksAddCardCmd = &cobra.Command{
 
 		_, err = client.AddCardToDeck(ctx, &pb.AddCardToDeckRequest{
 			DeckId: deckID,
-			Card:   targetCard,
+			CardId: cardID,
 		})
 		if err != nil {
 			log.Fatalf("Failed to add card to deck: %v", err)

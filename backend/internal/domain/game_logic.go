@@ -22,7 +22,7 @@ var (
 
 const HandSize = 10
 
-func StartGame(game *pb.Game, session *pb.Session) error {
+func StartGame(game *pb.Game, session *pb.Session, allCards map[string]*pb.Card, allDecks map[string]*pb.Deck) error {
 	if game.State != pb.GameState_GAME_STATE_WAITING {
 		return ErrGameNotWaiting
 	}
@@ -35,8 +35,16 @@ func StartGame(game *pb.Game, session *pb.Session) error {
 	game.HiddenWhiteDeck = make([]*pb.Card, 0)
 
 	// Consolidate decks
-	for _, deck := range session.Decks {
-		for _, card := range deck.Cards {
+	for _, deckID := range session.DeckIds {
+		deck, ok := allDecks[deckID]
+		if !ok {
+			continue
+		}
+		for _, cardID := range deck.CardIds {
+			card, ok := allCards[cardID]
+			if !ok {
+				continue
+			}
 			if card.Blanks > 0 {
 				game.HiddenBlackDeck = append(game.HiddenBlackDeck, card)
 			} else {

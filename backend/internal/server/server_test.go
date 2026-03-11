@@ -49,10 +49,13 @@ func TestServer_AddCardToDeck(t *testing.T) {
 	require.NoError(t, err)
 
 	card := &pb.Card{Id: "card123", Text: "A ___ card."}
+	err = store.CreateCard(context.Background(), card)
+	require.NoError(t, err)
+
 	ctx := context.WithValue(context.Background(), server.PlayerContextKey, player)
 	req := &pb.AddCardToDeckRequest{
 		DeckId: deck.Id,
-		Card:   card,
+		CardId: card.Id,
 	}
 
 	resp, err := srv.AddCardToDeck(ctx, req)
@@ -61,6 +64,6 @@ func TestServer_AddCardToDeck(t *testing.T) {
 
 	fetchDeck, err := store.GetDeck(context.Background(), deck.Id)
 	require.NoError(t, err)
-	assert.Len(t, fetchDeck.Cards, 1)
-	assert.Equal(t, "A ___ card.", fetchDeck.Cards[0].Text)
+	assert.Len(t, fetchDeck.CardIds, 1)
+	assert.Equal(t, card.Id, fetchDeck.CardIds[0])
 }

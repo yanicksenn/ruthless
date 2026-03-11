@@ -9,7 +9,7 @@ func NewSession() *pb.Session {
 	return &pb.Session{
 		Id:      uuid.New().String(),
 		Players: []*pb.Player{},
-		Decks:   []*pb.Deck{},
+		DeckIds: []string{},
 	}
 }
 
@@ -17,6 +17,6 @@ func AddPlayerToSession(s *pb.Session, player *pb.Player) {
 	s.Players = append(s.Players, player)
 }
 
-func AddDeckToSession(s *pb.Session, deck *pb.Deck) {
-	s.Decks = append(s.Decks, deck)
+func AddDeckToSession(s *pb.Session, deckID string) {
+	s.DeckIds = append(s.DeckIds, deckID)
 }

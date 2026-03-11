@@ -37,7 +37,25 @@ func (s *Server) StartGame(ctx context.Context, req *pb.StartGameRequest) (*pb.G
 		return nil, status.Errorf(codes.Internal, "failed to fetch session")
 	}
 
-	if err := domain.StartGame(game, session); err != nil {
+	cards, err := s.store.ListCards(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to fetch cards")
+	}
+	cardMap := make(map[string]*pb.Card)
+	for _, c := range cards {
+		cardMap[c.Id] = c
+	}
+
+	decks, err := s.store.ListDecks(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to fetch decks")
+	}
+	deckMap := make(map[string]*pb.Deck)
+	for _, d := range decks {
+		deckMap[d.Id] = d
+	}
+
+	if err := domain.StartGame(game, session, cardMap, deckMap); err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "failed to start game: %v", err)
 	}
 

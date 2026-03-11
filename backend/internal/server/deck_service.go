@@ -97,7 +97,12 @@ func (s *Server) AddCardToDeck(ctx context.Context, req *pb.AddCardToDeckRequest
 		return nil, status.Errorf(codes.NotFound, "deck not found")
 	}
 
-	if err := domain.AddCardToDeck(deck, player.Id, req.Card); err != nil {
+	// Validate card exists
+	if _, err := s.store.GetCard(ctx, req.CardId); err != nil {
+		return nil, status.Errorf(codes.NotFound, "card not found")
+	}
+
+	if err := domain.AddCardToDeck(deck, player.Id, req.CardId); err != nil {
 		return nil, status.Errorf(codes.PermissionDenied, err.Error())
 	}
 

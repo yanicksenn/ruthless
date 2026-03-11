@@ -22,8 +22,8 @@ func TestSession_AddDeck(t *testing.T) {
 	session := domain.NewSession()
 	deck := domain.NewDeck("My Deck", "owner-1")
 
-	domain.AddDeckToSession(session, deck)
+	domain.AddDeckToSession(session, deck.Id)
 
-	assert.Len(t, session.Decks, 1)
-	assert.Equal(t, "My Deck", session.Decks[0].Name)
+	assert.Len(t, session.DeckIds, 1)
+	assert.Equal(t, deck.Id, session.DeckIds[0])
 }

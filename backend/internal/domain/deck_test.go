@@ -42,13 +42,13 @@ func TestDeck_AddRemoveCard(t *testing.T) {
 	require.NoError(t, err)
 
 	// Unauthorized addition
-	err = domain.AddCardToDeck(deck, "other-user", card)
+	err = domain.AddCardToDeck(deck, "other-user", card.Id)
 	assert.ErrorIs(t, err, domain.ErrUnauthorized)
 
 	// Authorized addition
-	err = domain.AddCardToDeck(deck, "owner-1", card)
+	err = domain.AddCardToDeck(deck, "owner-1", card.Id)
 	assert.NoError(t, err)
-	assert.Len(t, deck.Cards, 1)
+	assert.Len(t, deck.CardIds, 1)
 
 	// Unauthorized removal
 	err = domain.RemoveCardFromDeck(deck, "other-user", card.Id)
@@ -57,5 +57,5 @@ func TestDeck_AddRemoveCard(t *testing.T) {
 	// Authorized removal
 	err = domain.RemoveCardFromDeck(deck, "owner-1", card.Id)
 	assert.NoError(t, err)
-	assert.Len(t, deck.Cards, 0)
+	assert.Len(t, deck.CardIds, 0)
 }

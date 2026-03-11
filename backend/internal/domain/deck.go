@@ -18,7 +18,7 @@ func NewDeck(name string, ownerID string) *pb.Deck {
 		Name:         name,
 		OwnerId:      ownerID,
 		Contributors: []string{},
-		Cards:        []*pb.Card{},
+		CardIds:      []string{},
 	}
 }
 
@@ -60,11 +60,11 @@ func RemoveContributorFromDeck(d *pb.Deck, ownerID, contributorID string) error 
 	return nil
 }
 
-func AddCardToDeck(d *pb.Deck, userID string, card *pb.Card) error {
+func AddCardToDeck(d *pb.Deck, userID string, cardID string) error {
 	if !CanModifyDeck(d, userID) {
 		return ErrUnauthorized
 	}
-	d.Cards = append(d.Cards, card)
+	d.CardIds = append(d.CardIds, cardID)
 	return nil
 }
 
@@ -72,9 +72,9 @@ func RemoveCardFromDeck(d *pb.Deck, userID string, cardID string) error {
 	if !CanModifyDeck(d, userID) {
 		return ErrUnauthorized
 	}
-	for i, card := range d.Cards {
-		if card.Id == cardID {
-			d.Cards = append(d.Cards[:i], d.Cards[i+1:]...)
+	for i, id := range d.CardIds {
+		if id == cardID {
+			d.CardIds = append(d.CardIds[:i], d.CardIds[i+1:]...)
 			return nil
 		}
 	}

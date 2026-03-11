@@ -1,34 +1,48 @@
 {
   "users": [
     { "id": "Alice", "name": "Alice" },
-    { "id": "Bob", "name": "Bob" }
+    { "id": "Bob", "name": "Bob" },
+    { "id": "Charlie", "name": "Charlie" },
+    { "id": "Dave", "name": "Dave" }
   ],
   "cards": [
     { "id": "black-1", "text": "A big black ___" },
     { "id": "black-2", "text": "The feeling of being watched by a ___" },
+    { "id": "black-3", "text": "What's the next superhero's secret weapon? ___" },
+    { "id": "black-4", "text": "In the new M. Night Shyamalan movie, it's revealed that ___ was actually ___ all along." },
     { "id": "white-1", "text": "White card 1" },
     { "id": "white-2", "text": "White card 2" },
-    { "id": "white-3", "text": "White card 3" }
+    { "id": "white-3", "text": "White card 3" },
+    { "id": "white-4", "text": "A middle-aged man on roller skates." },
+    { "id": "white-5", "text": "The profound silence of the tomb." },
+    { "id": "white-6", "text": "Being a motherfucking sorcerer." },
+    { "id": "white-7", "text": "A sausage festival." }
   ],
   "decks": [
     {
       "id": "deck-1",
       "name": "Default Deck",
       "owner_id": "Alice",
-      "cards": [
-        { "id": "black-1", "text": "A big black ___", "blanks": 1 },
-        { "id": "black-2", "text": "The feeling of being watched by a ___", "blanks": 1 },
-        { "id": "white-1", "text": "White card 1" },
-        { "id": "white-2", "text": "White card 2" },
-        { "id": "white-3", "text": "White card 3" }
+      "card_ids": [
+        "black-1",
+        "black-2",
+        "black-3",
+        "black-4",
+        "white-1",
+        "white-2",
+        "white-3",
+        "white-4",
+        "white-5",
+        "white-6",
+        "white-7"
       ]
     }
   ],
   "sessions": [
     {
       "id": "seeding-demonstration",
-      "decks": [
-        { "id": "deck-1", "name": "Default Deck" }
+      "deck_ids": [
+        "deck-1"
       ]
     }
   ],

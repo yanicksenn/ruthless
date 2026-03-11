@@ -48,12 +48,11 @@ func (s *Server) AddDeckToSession(ctx context.Context, req *pb.AddDeckToSessionR
 		return nil, status.Errorf(codes.NotFound, "session not found")
 	}
 
-	deck, err := s.store.GetDeck(ctx, req.DeckId)
-	if err != nil {
+	if _, err := s.store.GetDeck(ctx, req.DeckId); err != nil {
 		return nil, status.Errorf(codes.NotFound, "deck not found")
 	}
 
-	domain.AddDeckToSession(session, deck)
+	domain.AddDeckToSession(session, req.DeckId)
 
 	if err := s.store.UpdateSession(ctx, session); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to update session")
