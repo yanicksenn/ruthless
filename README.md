@@ -30,6 +30,16 @@ Start the gRPC server using `memory` storage and `fake` auth (great for local te
 bazel run //backend/cmd/cah -- server --storage=memory --auth=fake
 ```
 
+#### **Seeding the Server**
+You can pre-populate the server (memory storage only) with a JSON seed file containing users, cards, decks, and sessions:
+
+```bash
+bazel run //backend/cmd/cah -- server --storage=memory --auth=fake --seed=$(pwd)/seed.json
+```
+
+> [!NOTE]
+> The `--seed` flag is a **server-side** flag. You must apply it when starting the server, not when running the CLI client commands.
+
 ### CLI Gameplay
 
 The CLI tool acts as a full game client! It connects to the server using the `--host` flag (defaults to `localhost:8080`).
