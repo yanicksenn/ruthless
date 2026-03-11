@@ -5,38 +5,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	pb "github.com/yanicksenn/ruthless/api/v1"
-	"github.com/yanicksenn/ruthless/backend/internal/domain"
 	"github.com/yanicksenn/ruthless/backend/internal/storage"
 )
 
 type SeedData struct {
-	Users    []SeedUser    `json:"users"`
-	Cards    []SeedCard    `json:"cards"`
-	Decks    []SeedDeck    `json:"decks"`
-	Sessions []SeedSession `json:"sessions"`
-}
-
-type SeedUser struct {
-	Id   string `json:"id"`
-	Name string `json:"name"`
-}
-
-type SeedCard struct {
-	Id   string `json:"id"`
-	Text string `json:"text"`
-}
-
-type SeedDeck struct {
-	Name    string   `json:"name"`
-	OwnerId string   `json:"owner_id"`
-	CardIds []string `json:"card_ids"`
-}
-
-type SeedSession struct {
-	Id        string   `json:"id"`
-	DeckNames []string `json:"deck_names"`
+	Users    map[string]*pb.User    `json:"users"`
+	Cards    map[string]*pb.Card    `json:"cards"`
+	Decks    map[string]*pb.Deck    `json:"decks"`
+	Sessions map[string]*pb.Session `json:"sessions"`
+	Games    map[string]*pb.Game    `json:"games"`
 }
 
 func LoadSeed(ctx context.Context, store storage.Storage, filePath string) error {
@@ -50,62 +30,36 @@ func LoadSeed(ctx context.Context, store storage.Storage, filePath string) error
 		return fmt.Errorf("failed to parse seed JSON: %w", err)
 	}
 
-	// 0. Create Users
-	for _, su := range seed.Users {
-		user := &pb.User{
-			Id:   su.Id,
-			Name: su.Name,
-		}
-		if err := store.CreateUser(ctx, user); err != nil {
-			return fmt.Errorf("failed to seed user %q: %w", su.Name, err)
+	for _, u := range seed.Users {
+		if err := store.CreateUser(ctx, u); err != nil {
+			return fmt.Errorf("failed to seed user %s: %w", u.Id, err)
 		}
 	}
 
-	// 1. Create Cards
-	idToCard := make(map[string]*pb.Card)
-	for _, sc := range seed.Cards {
-		card, _ := domain.NewCard(sc.Text)
-		if sc.Id != "" {
-			card.Id = sc.Id
+	for _, c := range seed.Cards {
+		if c.Blanks == 0 && strings.Contains(c.Text, "___") {
+			c.Blanks = uint32(strings.Count(c.Text, "___"))
 		}
-		if err := store.CreateCard(ctx, card); err != nil {
-			return fmt.Errorf("failed to seed card %q: %w", sc.Text, err)
+		if err := store.CreateCard(ctx, c); err != nil {
+			return fmt.Errorf("failed to seed card %s: %w", c.Id, err)
 		}
-		idToCard[card.Id] = card
 	}
 
-	// 2. Create Decks
-	nameToDeck := make(map[string]*pb.Deck)
-	for _, sd := range seed.Decks {
-		deck := domain.NewDeck(sd.Name, sd.OwnerId)
-		for _, cid := range sd.CardIds {
-			card, ok := idToCard[cid]
-			if !ok {
-				return fmt.Errorf("card id %q not found for deck %q", cid, sd.Name)
-			}
-			domain.AddCardToDeck(deck, sd.OwnerId, card)
+	for _, d := range seed.Decks {
+		if err := store.CreateDeck(ctx, d); err != nil {
+			return fmt.Errorf("failed to seed deck %s: %w", d.Id, err)
 		}
-		if err := store.CreateDeck(ctx, deck); err != nil {
-			return fmt.Errorf("failed to seed deck %q: %w", sd.Name, err)
-		}
-		nameToDeck[sd.Name] = deck
 	}
 
-	// 3. Create Sessions
-	for _, ss := range seed.Sessions {
-		session := domain.NewSession()
-		if ss.Id != "" {
-			session.Id = ss.Id
+	for _, s := range seed.Sessions {
+		if err := store.CreateSession(ctx, s); err != nil {
+			return fmt.Errorf("failed to seed session %s: %w", s.Id, err)
 		}
-		for _, dn := range ss.DeckNames {
-			deck, ok := nameToDeck[dn]
-			if !ok {
-				return fmt.Errorf("deck name %q not found for session %q", dn, session.Id)
-			}
-			domain.AddDeckToSession(session, deck)
-		}
-		if err := store.CreateSession(ctx, session); err != nil {
-			return fmt.Errorf("failed to seed session %q: %w", session.Id, err)
+	}
+
+	for _, g := range seed.Games {
+		if err := store.CreateGame(ctx, g); err != nil {
+			return fmt.Errorf("failed to seed game %s: %w", g.Id, err)
 		}
 	}
 
