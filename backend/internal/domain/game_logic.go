@@ -16,8 +16,9 @@ var (
 	ErrNotYourTurn    = errors.New("not your turn or you are the czar")
 	ErrCzarCannotPlay = errors.New("czar cannot play white cards")
 	ErrPlayerNotFound = errors.New("player not found")
-	ErrNotCzar        = errors.New("only the czar can select a winner")
-	ErrPlayNotFound   = errors.New("play not found")
+	ErrNotCzar               = errors.New("only the czar can select a winner")
+	ErrPlayNotFound          = errors.New("play not found")
+	ErrInvalidNumberOfCards = errors.New("invalid number of cards played")
 )
 
 const HandSize = 10
@@ -117,6 +118,10 @@ func PlayCards(game *pb.Game, playerID string, cardIDs []string) (*pb.Play, erro
 	currentRound := game.Rounds[len(game.Rounds)-1]
 	if currentRound.CzarId == playerID {
 		return nil, ErrCzarCannotPlay
+	}
+
+	if len(cardIDs) != int(currentRound.BlackCard.Blanks) {
+		return nil, ErrInvalidNumberOfCards
 	}
 
 	// Check if already played

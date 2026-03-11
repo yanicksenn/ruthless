@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -61,16 +62,19 @@ const (
 )
 
 type model struct {
-	conn    *grpc.ClientConn
-	token   context.Context
-	state   state
-	list    list.Model
-	session *pb.Session
-	game    *pb.Game
-	hand    []*pb.Card
-	err     error
-	width   int
-	height  int
+	conn     *grpc.ClientConn
+	token    context.Context
+	playerID string
+	state    state
+	list     list.Model
+	session  *pb.Session
+	game     *pb.Game
+	hand     []*pb.Card
+	cursor   int
+	selected []int
+	err      error
+	width    int
+	height   int
 }
 
 func initialModel(conn *grpc.ClientConn, token string) model {
@@ -81,10 +85,12 @@ func initialModel(conn *grpc.ClientConn, token string) model {
 	l.Title = "Select a Session"
 
 	return model{
-		conn:  conn,
-		token: ctx,
-		state: stateSelectingSession,
-		list:  l,
+		conn:     conn,
+		token:    ctx,
+		playerID: token,
+		state:    stateSelectingSession,
+		list:     l,
+		selected: []int{},
 	}
 }
 
@@ -104,6 +110,76 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if ok {
 					return m, m.joinSession(item.id)
 				}
+			} else if m.state == stateInGame && m.game != nil {
+				if m.game.State == pb.GameState_GAME_STATE_PLAYING {
+					return m, m.playCards()
+				} else if m.game.State == pb.GameState_GAME_STATE_JUDGING {
+					round := m.game.Rounds[len(m.game.Rounds)-1]
+					if round.CzarId == m.playerID {
+						return m, m.selectWinner()
+					}
+				}
+			}
+		case "up":
+			if m.cursor > 0 {
+				m.cursor--
+			}
+		case "down":
+			limit := 0
+			if m.game != nil {
+				if m.game.State == pb.GameState_GAME_STATE_PLAYING {
+					limit = len(m.hand) - 1
+				} else if m.game.State == pb.GameState_GAME_STATE_JUDGING {
+					round := m.game.Rounds[len(m.game.Rounds)-1]
+					limit = len(round.Plays) - 1
+				}
+			}
+			if m.cursor < limit {
+				m.cursor++
+			}
+		case " ":
+			if m.game != nil && m.game.State == pb.GameState_GAME_STATE_PLAYING {
+				// Only if not the czar
+				round := m.game.Rounds[len(m.game.Rounds)-1]
+				if round.CzarId != m.playerID && !hasSubmitted(m.game, m.playerID) {
+					// Toggle selection
+					found := -1
+					for i, idx := range m.selected {
+						if idx == m.cursor {
+							found = i
+							break
+						}
+					}
+
+					if found != -1 {
+						// Remove
+						m.selected = append(m.selected[:found], m.selected[found+1:]...)
+					} else {
+						// Add if not at limit
+						if len(m.selected) < int(round.BlackCard.Blanks) {
+							m.selected = append(m.selected, m.cursor)
+						}
+					}
+				}
+			} else if m.game != nil && m.game.State == pb.GameState_GAME_STATE_JUDGING {
+				m.selected = []int{m.cursor} // In judging, we just pick one
+			}
+		case "left":
+			if m.state == stateInGame && m.game != nil && m.game.State == pb.GameState_GAME_STATE_JUDGING {
+				if m.cursor > 0 {
+					m.cursor--
+				}
+			}
+		case "right":
+			if m.state == stateInGame && m.game != nil && m.game.State == pb.GameState_GAME_STATE_JUDGING {
+				round := m.game.Rounds[len(m.game.Rounds)-1]
+				if m.cursor < len(round.Plays)-1 {
+					m.cursor++
+				}
+			}
+		case "s":
+			if m.state == stateInGame && m.game != nil && m.game.State == pb.GameState_GAME_STATE_WAITING {
+				return m, m.startGame()
 			}
 		}
 
@@ -134,6 +210,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.state == stateInGame {
 			return m, tea.Batch(m.fetchGame(), m.fetchHand())
 		}
+
+	case actionDoneMsg:
+		m.selected = []int{}
+		m.cursor = 0
+		return m, tea.Batch(m.fetchGame(), m.fetchHand())
 
 	case errorMsg:
 		m.err = msg.err
@@ -174,8 +255,22 @@ func (m model) View() string {
 	// Scores
 	s.WriteString(infoStyle.Render("Scores:"))
 	s.WriteString("\n")
-	for playerID, score := range m.game.Scores {
-		s.WriteString(fmt.Sprintf("  %s: %d\n", playerID, score))
+
+	playerIDs := make([]string, 0, len(m.game.Scores))
+	for pid := range m.game.Scores {
+		playerIDs = append(playerIDs, pid)
+	}
+	sort.Slice(playerIDs, func(i, j int) bool {
+		si, sj := m.game.Scores[playerIDs[i]], m.game.Scores[playerIDs[j]]
+		if si != sj {
+			return si > sj
+		}
+		return playerIDs[i] < playerIDs[j]
+	})
+
+	for _, pid := range playerIDs {
+		score := m.game.Scores[pid]
+		s.WriteString(fmt.Sprintf("  %s: %d\n", pid, score))
 	}
 	s.WriteString("\n")
 
@@ -187,23 +282,79 @@ func (m model) View() string {
 		
 		s.WriteString(fmt.Sprintf("Czar: %s\n", round.CzarId))
 		
-		if round.BlackCard != nil {
-			s.WriteString(cardStyle.Render(fmt.Sprintf("BLACK CARD:\n%s", round.BlackCard.Text)))
-			s.WriteString("\n\n")
+		bcText := round.BlackCard.Text
+		if m.game.State == pb.GameState_GAME_STATE_JUDGING && len(round.Plays) > 0 {
+			bcText = renderBlackCard(bcText, round.Plays[m.cursor].Cards)
+			s.WriteString(fmt.Sprintf("\nViewing submission %d of %d (left/right to navigate)\n", m.cursor+1, len(round.Plays)))
+		}
+
+		// Calculate available width for the card (minus margins and border/padding)
+		cardWidth := m.width - 6
+		if cardWidth < 20 {
+			cardWidth = 20
+		}
+
+		s.WriteString(cardStyle.Width(cardWidth).Render(fmt.Sprintf("BLACK CARD:\n%s", bcText)))
+		s.WriteString("\n\n")
+
+		if m.game.State == pb.GameState_GAME_STATE_JUDGING && len(round.Plays) > 0 && round.CzarId == m.playerID {
+			s.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("42")).Render("YOU ARE THE CZAR. Press Enter to pick this as the winner!"))
+			s.WriteString("\n")
 		}
 
 		s.WriteString(fmt.Sprintf("Plays: %d / %d players\n", len(round.Plays), len(m.session.PlayerIds)-1))
 	}
 
 	// Your Hand
-	s.WriteString("\n")
-	s.WriteString(titleStyle.Render("YOUR HAND:"))
-	s.WriteString("\n")
-	for i, c := range m.hand {
-		s.WriteString(fmt.Sprintf("%d) %s\n", i+1, c.Text))
+	if m.game.State == pb.GameState_GAME_STATE_PLAYING {
+		round := m.game.Rounds[len(m.game.Rounds)-1]
+		if round.CzarId == m.playerID {
+			s.WriteString("\n")
+			s.WriteString( lipgloss.NewStyle().Foreground(lipgloss.Color("208")).Render("YOU ARE THE CZAR. Wait for other players to submit their cards.") )
+			s.WriteString("\n")
+		} else if hasSubmitted(m.game, m.playerID) {
+			s.WriteString("\n")
+			s.WriteString( lipgloss.NewStyle().Foreground(lipgloss.Color("42")).Render("You have submitted your cards. Waiting for others...") )
+			s.WriteString("\n")
+		} else {
+			s.WriteString("\n")
+			s.WriteString(titleStyle.Render("YOUR HAND:"))
+			s.WriteString("\n")
+			for i, c := range m.hand {
+				cursor := " "
+				if m.cursor == i {
+					cursor = ">"
+				}
+				selected := " "
+				found := -1
+				for j, idx := range m.selected {
+					if idx == i {
+						found = j
+						break
+					}
+				}
+
+				if found != -1 {
+					if round.BlackCard.Blanks > 1 {
+						selected = fmt.Sprintf("%d", found+1)
+					} else {
+						selected = "*"
+					}
+				}
+				s.WriteString(fmt.Sprintf("%s [%s] %s\n", cursor, selected, c.Text))
+			}
+		}
 	}
 
-	s.WriteString("\n\n(q to quit, auto-refreshing every 2s...)\n")
+	s.WriteString("\n\n(q to quit, arrows to move, space to select, enter to submit)")
+	if m.game != nil && m.game.State == pb.GameState_GAME_STATE_JUDGING {
+		s.WriteString("\n(left/right to flip through submissions)")
+	}
+	s.WriteString("\n(auto-refreshing every 2s...)")
+	if m.game != nil && m.game.State == pb.GameState_GAME_STATE_WAITING {
+		s.WriteString("\n(s to start game)")
+	}
+	s.WriteString("\n")
 
 	return s.String()
 }
@@ -215,6 +366,7 @@ type sessionJoinedMsg struct{ session *pb.Session }
 type gameMsg struct{ game *pb.Game }
 type handMsg struct{ cards []*pb.Card }
 type tickMsg struct{}
+type actionDoneMsg struct{}
 type errorMsg struct{ err error }
 
 func (m model) fetchSessions() tea.Cmd {
@@ -276,4 +428,102 @@ func (m model) fetchHand() tea.Cmd {
 		}
 		return handMsg{cards: resp.Cards}
 	}
+}
+
+func (m model) startGame() tea.Cmd {
+	return func() tea.Msg {
+		client := pb.NewGameServiceClient(m.conn)
+		_, err := client.StartGame(m.token, &pb.StartGameRequest{Id: m.game.Id})
+		if err != nil {
+			return errorMsg{err}
+		}
+		return tickMsg{}
+	}
+}
+
+func (m model) playCards() tea.Cmd {
+	return func() tea.Msg {
+		// Safety check: Czar cannot play cards
+		round := m.game.Rounds[len(m.game.Rounds)-1]
+		if round.CzarId == m.playerID || hasSubmitted(m.game, m.playerID) {
+			return nil // ignore if czar or already submitted
+		}
+
+		var cardIDs []string
+		for _, idx := range m.selected {
+			if idx < len(m.hand) {
+				cardIDs = append(cardIDs, m.hand[idx].Id)
+			}
+		}
+
+		if len(cardIDs) != int(round.BlackCard.Blanks) {
+			return nil // Don't allow submission if not enough cards
+		}
+
+		client := pb.NewGameServiceClient(m.conn)
+		_, err := client.PlayCards(m.token, &pb.PlayCardsRequest{
+			GameId:  m.game.Id,
+			CardIds: cardIDs,
+		})
+		if err != nil {
+			return errorMsg{err}
+		}
+
+		// Clear selection and cursor
+		return actionDoneMsg{}
+	}
+}
+
+func (m model) selectWinner() tea.Cmd {
+	return func() tea.Msg {
+		// Only the Czar can select a winner
+		round := m.game.Rounds[len(m.game.Rounds)-1]
+		if round.CzarId != m.playerID {
+			return errorMsg{fmt.Errorf("only the czar can select a winner")}
+		}
+
+		if m.cursor >= len(round.Plays) {
+			return nil
+		}
+		playID := round.Plays[m.cursor].Id
+
+		client := pb.NewGameServiceClient(m.conn)
+		_, err := client.SelectWinner(m.token, &pb.SelectWinnerRequest{
+			GameId: m.game.Id,
+			PlayId: playID,
+		})
+		if err != nil {
+			return errorMsg{err}
+		}
+
+		return actionDoneMsg{}
+	}
+}
+
+func renderBlackCard(template string, whiteCards []*pb.Card) string {
+	highlightStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("208")).Bold(true).Underline(true)
+	result := template
+	for _, wc := range whiteCards {
+		if !strings.Contains(result, "___") {
+			break
+		}
+		// Use a marker that's less likely to collide, but here we just replace the first ___
+		replacement := highlightStyle.Render(wc.Text)
+		result = strings.Replace(result, "___", replacement, 1)
+	}
+	// Clean up any remaining underscores if any (though usually card has exact count)
+	return result
+}
+
+func hasSubmitted(game *pb.Game, playerID string) bool {
+	if game == nil || len(game.Rounds) == 0 {
+		return false
+	}
+	round := game.Rounds[len(game.Rounds)-1]
+	for _, p := range round.Plays {
+		if p.PlayerId == playerID {
+			return true
+		}
+	}
+	return false
 }

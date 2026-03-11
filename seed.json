@@ -1,22 +1,179 @@
 {
   "users": [
-    { "id": "Alice", "name": "Alice" },
-    { "id": "Bob", "name": "Bob" },
-    { "id": "Charlie", "name": "Charlie" },
-    { "id": "Dave", "name": "Dave" }
+    {
+      "id": "Alice",
+      "name": "Alice"
+    },
+    {
+      "id": "Bob",
+      "name": "Bob"
+    },
+    {
+      "id": "Charlie",
+      "name": "Charlie"
+    },
+    {
+      "id": "Dave",
+      "name": "Dave"
+    }
   ],
   "cards": [
-    { "id": "black-1", "text": "A big black ___" },
-    { "id": "black-2", "text": "The feeling of being watched by a ___" },
-    { "id": "black-3", "text": "What's the next superhero's secret weapon? ___" },
-    { "id": "black-4", "text": "In the new M. Night Shyamalan movie, it's revealed that ___ was actually ___ all along." },
-    { "id": "white-1", "text": "White card 1" },
-    { "id": "white-2", "text": "White card 2" },
-    { "id": "white-3", "text": "White card 3" },
-    { "id": "white-4", "text": "A middle-aged man on roller skates." },
-    { "id": "white-5", "text": "The profound silence of the tomb." },
-    { "id": "white-6", "text": "Being a motherfucking sorcerer." },
-    { "id": "white-7", "text": "A sausage festival." }
+    {
+      "id": "black-1",
+      "text": "A big black ___"
+    },
+    {
+      "id": "black-2",
+      "text": "The feeling of being watched by a ___"
+    },
+    {
+      "id": "black-3",
+      "text": "What's the next superhero's secret weapon? ___"
+    },
+    {
+      "id": "black-4",
+      "text": "In the new M. Night Shyamalan movie, it's revealed that ___ was actually ___ all along."
+    },
+    {
+      "id": "white-1",
+      "text": "White card 1"
+    },
+    {
+      "id": "white-2",
+      "text": "White card 2"
+    },
+    {
+      "id": "white-3",
+      "text": "White card 3"
+    },
+    {
+      "id": "white-4",
+      "text": "A middle-aged man on roller skates."
+    },
+    {
+      "id": "white-5",
+      "text": "The profound silence of the tomb."
+    },
+    {
+      "id": "white-6",
+      "text": "Being a motherfucking sorcerer."
+    },
+    {
+      "id": "white-7",
+      "text": "A sausage festival."
+    },
+    {
+      "id": "white-8",
+      "text": "The quiet majesty of the nature."
+    },
+    {
+      "id": "white-9",
+      "text": "A PowerPoint presentation on global warming."
+    },
+    {
+      "id": "white-10",
+      "text": "An oversized foam finger."
+    },
+    {
+      "id": "white-11",
+      "text": "The inevitable heat death of the universe."
+    },
+    {
+      "id": "white-12",
+      "text": "A tiny, screaming goat."
+    },
+    {
+      "id": "white-13",
+      "text": "The ghost of Christmas past."
+    },
+    {
+      "id": "white-14",
+      "text": "A suspicious-looking cupcake."
+    },
+    {
+      "id": "white-15",
+      "text": "The collective unconscious."
+    },
+    {
+      "id": "white-16",
+      "text": "A lukewarm bowl of oatmeal."
+    },
+    {
+      "id": "white-17",
+      "text": "The art of the deal."
+    },
+    {
+      "id": "white-18",
+      "text": "A sentient pile of laundry."
+    },
+    {
+      "id": "white-19",
+      "text": "The subtle art of not giving a f*ck."
+    },
+    {
+      "id": "white-20",
+      "text": "A bag of frozen peas."
+    },
+    {
+      "id": "white-21",
+      "text": "The thrill of the hunt."
+    },
+    {
+      "id": "white-22",
+      "text": "A vintage typewriter that only types in wingdings."
+    },
+    {
+      "id": "white-23",
+      "text": "The scent of a new car."
+    },
+    {
+      "id": "white-24",
+      "text": "A slightly damp handshake."
+    },
+    {
+      "id": "white-25",
+      "text": "The mystery of the missing sock."
+    },
+    {
+      "id": "white-26",
+      "text": "A very small hat for a very large dog."
+    },
+    {
+      "id": "white-27",
+      "text": "The sound of one hand clapping."
+    },
+    {
+      "id": "white-28",
+      "text": "A jar of artisanal pickles."
+    },
+    {
+      "id": "white-29",
+      "text": "The feeling of cold sand between your toes."
+    },
+    {
+      "id": "white-30",
+      "text": "A disco ball made of real eyes."
+    },
+    {
+      "id": "white-31",
+      "text": "The taste of a copper penny."
+    },
+    {
+      "id": "white-32",
+      "text": "A mime having a heart attack."
+    },
+    {
+      "id": "white-33",
+      "text": "The silence that follows a bad joke."
+    },
+    {
+      "id": "white-34",
+      "text": "A cloud that looks like a middle finger."
+    },
+    {
+      "id": "white-35",
+      "text": "The existential dread of a Sunday afternoon."
+    }
   ],
   "decks": [
     {
@@ -34,7 +191,35 @@
         "white-4",
         "white-5",
         "white-6",
-        "white-7"
+        "white-7",
+        "white-8",
+        "white-9",
+        "white-10",
+        "white-11",
+        "white-12",
+        "white-13",
+        "white-14",
+        "white-15",
+        "white-16",
+        "white-17",
+        "white-18",
+        "white-19",
+        "white-20",
+        "white-21",
+        "white-22",
+        "white-23",
+        "white-24",
+        "white-25",
+        "white-26",
+        "white-27",
+        "white-28",
+        "white-29",
+        "white-30",
+        "white-31",
+        "white-32",
+        "white-33",
+        "white-34",
+        "white-35"
       ]
     }
   ],
@@ -43,7 +228,8 @@
       "id": "seeding-demonstration",
       "player_ids": [
         "Alice",
-        "Bob"
+        "Bob",
+        "Charlie"
       ],
       "deck_ids": [
         "deck-1"

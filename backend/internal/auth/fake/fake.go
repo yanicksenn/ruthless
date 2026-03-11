@@ -20,9 +20,9 @@ func (a *Authenticator) Authenticate(ctx context.Context, token string) (*pb.Pla
 		return nil, auth.ErrUnauthorized
 	}
 
-	// Issue a deterministic or random player. For simplicity, we just use the token as the player name and salt it as ID.
+	// Issue a deterministic or random player. For simplicity, we just use the token as the player name and ID.
 	return &pb.Player{
-		Id:   "fake-" + token,
+		Id:   token,
 		Name: token,
 	}, nil
 }
