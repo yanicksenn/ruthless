@@ -17,6 +17,7 @@ import (
 var (
 	storageFlag string
 	authFlag    string
+	seedFlag    string
 )
 
 var serverCmd = &cobra.Command{
@@ -43,6 +44,17 @@ var serverCmd = &cobra.Command{
 
 		srv := server.New(store, authenticator)
 
+		// Handle Seeding
+		if seedFlag != "" {
+			if storageFlag != "memory" {
+				log.Fatalf("Seeding is only supported with 'memory' storage")
+			}
+			log.Printf("Seeding data from %s", seedFlag)
+			if err := server.LoadSeed(cmd.Context(), store, seedFlag); err != nil {
+				log.Fatalf("Failed to seed data: %v", err)
+			}
+		}
+
 		listener, err := net.Listen("tcp", ":8080")
 		if err != nil {
 			log.Fatalf("Failed to listen: %v", err)
@@ -65,4 +77,5 @@ func init() {
 	rootCmd.AddCommand(serverCmd)
 	serverCmd.Flags().StringVar(&storageFlag, "storage", "memory", "storage engine (memory|postgres)")
 	serverCmd.Flags().StringVar(&authFlag, "auth", "fake", "auth mechanism (fake|oauth)")
+	serverCmd.Flags().StringVar(&seedFlag, "seed", "", "path to a JSON seed file (only works with --storage=memory)")
 }

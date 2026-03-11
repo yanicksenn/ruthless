@@ -6,6 +6,7 @@ go_library(
         "card_service.go",
         "deck_service.go",
         "game_service.go",
+        "seed.go",
         "server.go",
         "session_service.go",
     ],

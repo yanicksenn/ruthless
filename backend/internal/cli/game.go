@@ -187,8 +187,4 @@ func init() {
 	gameCmd.AddCommand(gameHandCmd)
 	gameCmd.AddCommand(gamePlayCardsCmd)
 	gameCmd.AddCommand(gameJudgeCmd)
-
-	// Add persistent flag for token (since it's required to play)
-	gameCmd.PersistentFlags().String("token", "", "Your auth token (fake auth uses player name)")
-	gameCmd.MarkPersistentFlagRequired("token")
 }

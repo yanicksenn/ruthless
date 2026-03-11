@@ -34,6 +34,15 @@ bazel run //backend/cmd/cah -- server --storage=memory --auth=fake
 
 The CLI tool acts as a full game client! It connects to the server using the `--host` flag (defaults to `localhost:8080`).
 
+#### **Interactive TUI Mode (Recommended)**
+For a rich, auto-refreshing experience, use the interactive mode. It allows you to select a session and play through the game loop without manual command typing:
+
+```bash
+bazel run //backend/cmd/cah -- play interactive --token Alice
+```
+
+#### **Manual CLI Commands**
+
 **1. Create Cards and Decks:**
 ```bash
 bazel run //backend/cmd/cah -- cards create --text "A big black ___"

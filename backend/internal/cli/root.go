@@ -6,6 +6,7 @@ import (
 
 var (
 	grpcHost string
+	token    string
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -21,4 +22,5 @@ func Execute() error {
 
 func init() {
 	rootCmd.PersistentFlags().StringVar(&grpcHost, "host", "localhost:8080", "The host:port of the gRPC server")
+	rootCmd.PersistentFlags().StringVar(&token, "token", "", "Your auth token (fake auth uses player name)")
 }

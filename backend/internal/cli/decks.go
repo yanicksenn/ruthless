@@ -117,9 +117,4 @@ func init() {
 	rootCmd.AddCommand(decksCmd)
 	decksCmd.AddCommand(decksCreateCmd)
 	decksCmd.AddCommand(decksAddCardCmd)
-
-	decksCreateCmd.Flags().String("name", "", "The name of the deck")
-	decksCreateCmd.MarkFlagRequired("name")
-	
-	decksCmd.PersistentFlags().String("token", "", "Your auth token (fake auth uses player name)")
 }

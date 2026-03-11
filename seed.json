@@ -1,0 +1,28 @@
+{
+  "cards": [
+    { "text": "A big black ___" },
+    { "text": "The feeling of being watched by a ___" },
+    { "text": "White card 1" },
+    { "text": "White card 2" },
+    { "text": "White card 3" }
+  ],
+  "decks": [
+    {
+      "name": "Default Deck",
+      "owner_id": "system",
+      "card_texts": [
+        "A big black ___",
+        "The feeling of being watched by a ___",
+        "White card 1",
+        "White card 2",
+        "White card 3"
+      ]
+    }
+  ],
+  "sessions": [
+    {
+      "id": "seeding-demonstration",
+      "deck_names": ["Default Deck"]
+    }
+  ]
+}
