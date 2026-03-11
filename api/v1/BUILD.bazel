@@ -1,0 +1,17 @@
+# gazelle:ignore
+load("@rules_go//proto:def.bzl", "go_proto_library")
+load("@rules_proto//proto:defs.bzl", "proto_library")
+
+proto_library(
+    name = "ruthlespb_proto",
+    srcs = ["ruthless.proto"],
+    visibility = ["//visibility:public"],
+)
+
+go_proto_library(
+    name = "ruthlespb_go_proto",
+    compilers = ["@rules_go//proto:go_grpc"],
+    importpath = "github.com/yanicksenn/ruthless/api/v1",
+    proto = ":ruthlespb_proto",
+    visibility = ["//visibility:public"],
+)

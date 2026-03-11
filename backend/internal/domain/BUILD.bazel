@@ -1,0 +1,34 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "domain",
+    srcs = [
+        "card.go",
+        "deck.go",
+        "game.go",
+        "game_logic.go",
+        "session.go",
+        "user.go",
+    ],
+    importpath = "github.com/yanicksenn/ruthless/backend/internal/domain",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//api/v1:ruthlespb_go_proto",
+        "@com_github_google_uuid//:uuid",
+    ],
+)
+
+go_test(
+    name = "domain_test",
+    srcs = [
+        "card_test.go",
+        "deck_test.go",
+        "game_test.go",
+        "session_test.go",
+    ],
+    deps = [
+        ":domain",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

@@ -1,0 +1,72 @@
+package server
+
+import (
+	"context"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
+	pb "github.com/yanicksenn/ruthless/api/v1"
+	"github.com/yanicksenn/ruthless/backend/internal/domain"
+)
+
+func (s *Server) CreateSession(ctx context.Context, req *pb.CreateSessionRequest) (*pb.Session, error) {
+	session := domain.NewSession()
+	if err := s.store.CreateSession(ctx, session); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to create session")
+	}
+	return session, nil
+}
+
+func (s *Server) JoinSession(ctx context.Context, req *pb.JoinSessionRequest) (*pb.Session, error) {
+	session, err := s.store.GetSession(ctx, req.SessionId)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "session not found")
+	}
+
+	player := domain.NewPlayer(req.PlayerName)
+	domain.AddPlayerToSession(session, player)
+
+	if err := s.store.UpdateSession(ctx, session); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to update session")
+	}
+
+	return session, nil
+}
+
+func (s *Server) GetSession(ctx context.Context, req *pb.GetSessionRequest) (*pb.Session, error) {
+	session, err := s.store.GetSession(ctx, req.Id)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "session not found")
+	}
+	return session, nil
+}
+
+func (s *Server) AddDeckToSession(ctx context.Context, req *pb.AddDeckToSessionRequest) (*pb.AddDeckToSessionResponse, error) {
+	session, err := s.store.GetSession(ctx, req.SessionId)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "session not found")
+	}
+
+	deck, err := s.store.GetDeck(ctx, req.DeckId)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "deck not found")
+	}
+
+	domain.AddDeckToSession(session, deck)
+
+	if err := s.store.UpdateSession(ctx, session); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to update session")
+	}
+
+	return &pb.AddDeckToSessionResponse{}, nil
+}
+
+func (s *Server) ListSessions(ctx context.Context, req *pb.ListSessionsRequest) (*pb.ListSessionsResponse, error) {
+	sessions, err := s.store.ListSessions(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to list sessions")
+	}
+
+	return &pb.ListSessionsResponse{Sessions: sessions}, nil
+}

@@ -1,0 +1,9 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "auth",
+    srcs = ["auth.go"],
+    importpath = "github.com/yanicksenn/ruthless/backend/internal/auth",
+    visibility = ["//:__subpackages__"],
+    deps = ["//api/v1:ruthlespb_go_proto"],
+)

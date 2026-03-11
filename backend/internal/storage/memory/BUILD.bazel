@@ -1,0 +1,22 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "memory",
+    srcs = ["memory.go"],
+    importpath = "github.com/yanicksenn/ruthless/backend/internal/storage/memory",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//api/v1:ruthlespb_go_proto",
+        "//backend/internal/storage",
+    ],
+)
+
+go_test(
+    name = "memory_test",
+    srcs = ["memory_test.go"],
+    deps = [
+        ":memory",
+        "//backend/internal/domain",
+        "//backend/internal/storage",
+    ],
+)

@@ -1,0 +1,218 @@
+syntax = "proto3";
+
+package ruthless.v1;
+
+option go_package = "github.com/yanicksenn/ruthless/api/v1;ruthlespb";
+
+message Card {
+  string id = 1;
+  string text = 2;
+  uint32 blanks = 3; // 0 for white cards, >0 for black cards
+}
+
+message Player {
+  string id = 1;
+  string name = 2;
+}
+
+message User {
+  string id = 1;
+  string name = 2;
+}
+
+message Deck {
+  string id = 1;
+  string name = 2;
+  string owner_id = 3;
+  repeated string contributors = 4;
+  repeated Card cards = 5;
+}
+
+message Session {
+  string id = 1;
+  repeated Player players = 2;
+  repeated Deck decks = 3;
+}
+
+enum GameState {
+  GAME_STATE_UNSPECIFIED = 0;
+  GAME_STATE_WAITING = 1;
+  GAME_STATE_PLAYING = 2;
+  GAME_STATE_JUDGING = 3;
+  GAME_STATE_FINISHED = 4;
+}
+
+message PlayerHand {
+  repeated Card cards = 1;
+}
+
+message Play {
+  string id = 1;
+  string player_id = 2;
+  repeated Card cards = 3;
+}
+
+message Round {
+  string id = 1;
+  string czar_id = 2;
+  Card black_card = 3;
+  repeated Play plays = 4;
+  string winning_play_id = 5;
+}
+
+message Game {
+  string id = 1;
+  string session_id = 2;
+  GameState state = 3;
+  repeated Round rounds = 4;
+  map<string, uint32> scores = 5; // player_id -> score
+  map<string, PlayerHand> hidden_hands = 6;
+  repeated Card hidden_black_deck = 7;
+  repeated Card hidden_white_deck = 8;
+}
+
+// ----------------- Card Service -----------------
+
+message ListCardsRequest {}
+message ListCardsResponse {
+  repeated Card cards = 1;
+}
+
+message CreateCardRequest {
+  string text = 1;
+}
+
+service CardService {
+  rpc ListCards (ListCardsRequest) returns (ListCardsResponse);
+  rpc CreateCard (CreateCardRequest) returns (Card);
+}
+
+// ----------------- Deck Service -----------------
+
+message ListDecksRequest {}
+message ListDecksResponse {
+  repeated Deck decks = 1;
+}
+
+message GetDeckRequest {
+  string id = 1;
+}
+
+message CreateDeckRequest {
+  string name = 1;
+}
+
+message AddContributorRequest {
+  string deck_id = 1;
+  string contributor_id = 2;
+}
+message AddContributorResponse {}
+
+message RemoveContributorRequest {
+  string deck_id = 1;
+  string contributor_id = 2;
+}
+message RemoveContributorResponse {}
+
+message AddCardToDeckRequest {
+  string deck_id = 1;
+  Card card = 2;
+}
+message AddCardToDeckResponse {}
+
+message RemoveCardFromDeckRequest {
+  string deck_id = 1;
+  string card_id = 2;
+}
+message RemoveCardFromDeckResponse {}
+
+service DeckService {
+  rpc ListDecks (ListDecksRequest) returns (ListDecksResponse);
+  rpc GetDeck (GetDeckRequest) returns (Deck);
+  rpc CreateDeck (CreateDeckRequest) returns (Deck);
+  rpc AddContributor (AddContributorRequest) returns (AddContributorResponse);
+  rpc RemoveContributor (RemoveContributorRequest) returns (RemoveContributorResponse);
+  rpc AddCardToDeck (AddCardToDeckRequest) returns (AddCardToDeckResponse);
+  rpc RemoveCardFromDeck (RemoveCardFromDeckRequest) returns (RemoveCardFromDeckResponse);
+}
+
+// ----------------- Session Service -----------------
+
+message CreateSessionRequest {}
+
+message JoinSessionRequest {
+  string session_id = 1;
+  string player_name = 2;
+}
+
+message GetSessionRequest {
+  string id = 1;
+}
+
+message AddDeckToSessionRequest {
+  string session_id = 1;
+  string deck_id = 2;
+}
+message AddDeckToSessionResponse {}
+
+message ListSessionsRequest {}
+message ListSessionsResponse {
+  repeated Session sessions = 1;
+}
+
+service SessionService {
+  rpc CreateSession (CreateSessionRequest) returns (Session);
+  rpc JoinSession (JoinSessionRequest) returns (Session);
+  rpc GetSession (GetSessionRequest) returns (Session);
+  rpc AddDeckToSession (AddDeckToSessionRequest) returns (AddDeckToSessionResponse);
+  rpc ListSessions (ListSessionsRequest) returns (ListSessionsResponse);
+}
+
+// ----------------- Game Service -----------------
+
+message CreateGameRequest {
+  string session_id = 1;
+}
+
+message GetGameRequest {
+  string id = 1;
+}
+
+message GetGameBySessionRequest {
+  string session_id = 1;
+}
+
+message StartGameRequest {
+  string id = 1;
+}
+
+message PlayCardsRequest {
+  string game_id = 1;
+  repeated string card_ids = 2;
+}
+message PlayCardsResponse {
+  string play_id = 1;
+}
+
+message SelectWinnerRequest {
+  string game_id = 1;
+  string play_id = 2;
+}
+message SelectWinnerResponse {}
+
+message GetHandRequest {
+  string game_id = 1;
+}
+message GetHandResponse {
+  repeated Card cards = 1;
+}
+
+service GameService {
+  rpc CreateGame (CreateGameRequest) returns (Game);
+  rpc GetGame (GetGameRequest) returns (Game);
+  rpc StartGame (StartGameRequest) returns (Game);
+  rpc PlayCards (PlayCardsRequest) returns (PlayCardsResponse);
+  rpc SelectWinner (SelectWinnerRequest) returns (SelectWinnerResponse);
+  rpc GetHand (GetHandRequest) returns (GetHandResponse);
+  rpc GetGameBySession (GetGameBySessionRequest) returns (Game);
+}
