@@ -1,17 +1,17 @@
 {
-  "users": {
-    "Alice": { "id": "Alice", "name": "Alice" },
-    "Bob": { "id": "Bob", "name": "Bob" }
-  },
-  "cards": {
-    "black-1": { "id": "black-1", "text": "A big black ___" },
-    "black-2": { "id": "black-2", "text": "The feeling of being watched by a ___" },
-    "white-1": { "id": "white-1", "text": "White card 1" },
-    "white-2": { "id": "white-2", "text": "White card 2" },
-    "white-3": { "id": "white-3", "text": "White card 3" }
-  },
-  "decks": {
-    "deck-1": {
+  "users": [
+    { "id": "Alice", "name": "Alice" },
+    { "id": "Bob", "name": "Bob" }
+  ],
+  "cards": [
+    { "id": "black-1", "text": "A big black ___" },
+    { "id": "black-2", "text": "The feeling of being watched by a ___" },
+    { "id": "white-1", "text": "White card 1" },
+    { "id": "white-2", "text": "White card 2" },
+    { "id": "white-3", "text": "White card 3" }
+  ],
+  "decks": [
+    {
       "id": "deck-1",
       "name": "Default Deck",
       "owner_id": "Alice",
@@ -23,14 +23,14 @@
         { "id": "white-3", "text": "White card 3" }
       ]
     }
-  },
-  "sessions": {
-    "seeding-demonstration": {
+  ],
+  "sessions": [
+    {
       "id": "seeding-demonstration",
       "decks": [
         { "id": "deck-1", "name": "Default Deck" }
       ]
     }
-  },
-  "games": {}
+  ],
+  "games": []
 }

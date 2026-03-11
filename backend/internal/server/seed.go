@@ -12,11 +12,11 @@ import (
 )
 
 type SeedData struct {
-	Users    map[string]*pb.User    `json:"users"`
-	Cards    map[string]*pb.Card    `json:"cards"`
-	Decks    map[string]*pb.Deck    `json:"decks"`
-	Sessions map[string]*pb.Session `json:"sessions"`
-	Games    map[string]*pb.Game    `json:"games"`
+	Users    []*pb.User    `json:"users"`
+	Cards    []*pb.Card    `json:"cards"`
+	Decks    []*pb.Deck    `json:"decks"`
+	Sessions []*pb.Session `json:"sessions"`
+	Games    []*pb.Game    `json:"games"`
 }
 
 func LoadSeed(ctx context.Context, store storage.Storage, filePath string) error {
