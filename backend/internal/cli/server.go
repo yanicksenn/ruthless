@@ -9,15 +9,19 @@ import (
 	
 	"github.com/yanicksenn/ruthless/backend/internal/auth"
 	"github.com/yanicksenn/ruthless/backend/internal/auth/fake"
+	"github.com/yanicksenn/ruthless/backend/internal/auth/jwt"
 	"github.com/yanicksenn/ruthless/backend/internal/server"
 	"github.com/yanicksenn/ruthless/backend/internal/storage"
 	"github.com/yanicksenn/ruthless/backend/internal/storage/memory"
+	"github.com/yanicksenn/ruthless/backend/internal/storage/postgres"
 )
 
 var (
 	storageFlag string
 	authFlag    string
 	seedFlag    string
+	dbConnStr   string
+	authSecret  string
 )
 
 var serverCmd = &cobra.Command{
@@ -30,6 +34,12 @@ var serverCmd = &cobra.Command{
 		var store storage.Storage
 		if storageFlag == "memory" {
 			store = memory.New()
+		} else if storageFlag == "postgres" {
+			var err error
+			store, err = postgres.New(dbConnStr)
+			if err != nil {
+				log.Fatalf("Failed to initialize postgres storage: %v", err)
+			}
 		} else {
 			log.Fatalf("Unsupported storage type: %s", storageFlag)
 		}
@@ -38,6 +48,8 @@ var serverCmd = &cobra.Command{
 		var authenticator auth.Authenticator
 		if authFlag == "fake" {
 			authenticator = fake.New()
+		} else if authFlag == "jwt" {
+			authenticator = jwt.New(authSecret)
 		} else {
 			log.Fatalf("Unsupported auth type: %s", authFlag)
 		}
@@ -76,6 +88,8 @@ var serverCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(serverCmd)
 	serverCmd.Flags().StringVar(&storageFlag, "storage", "memory", "storage engine (memory|postgres)")
-	serverCmd.Flags().StringVar(&authFlag, "auth", "fake", "auth mechanism (fake|oauth)")
+	serverCmd.Flags().StringVar(&authFlag, "auth", "fake", "auth mechanism (fake|jwt)")
 	serverCmd.Flags().StringVar(&seedFlag, "seed", "", "path to a JSON seed file (only works with --storage=memory)")
+	serverCmd.Flags().StringVar(&dbConnStr, "db-conn-str", "", "PostgreSQL connection string")
+	serverCmd.Flags().StringVar(&authSecret, "auth-secret", "dev-secret", "JWT shared secret for auth")
 }

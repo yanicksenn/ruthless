@@ -1,0 +1,21 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "validate_api_lib",
+    srcs = ["validate_api.go"],
+    importpath = "github.com/yanicksenn/ruthless/backend/scripts",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//api/v1:ruthlespb_go_proto",
+        "@com_github_golang_jwt_jwt_v5//:jwt",
+        "@org_golang_google_grpc//:grpc",
+        "@org_golang_google_grpc//credentials/insecure",
+        "@org_golang_google_grpc//metadata",
+    ],
+)
+
+go_binary(
+    name = "validate_api",
+    embed = [":validate_api_lib"],
+    visibility = ["//visibility:public"],
+)

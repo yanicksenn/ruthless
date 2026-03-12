@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: ruthless_user
+      POSTGRES_PASSWORD: ruthless_password
+      POSTGRES_DB: ruthless_prod
+    ports:
+      - "5432:5432"
+    volumes:
+      - ruthless_data:/var/lib/postgresql/data
+
+volumes:
+  ruthless_data:

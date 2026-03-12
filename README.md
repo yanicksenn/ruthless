@@ -77,6 +77,39 @@ bazel run //backend/cmd/cah -- game play-cards <game_id> <white_card_id> --token
 bazel run //backend/cmd/cah -- game judge <game_id> <play_id> --token Alice (If you are the Czar)
 ```
 
+```bash
+bazel build //...
+bazel test //...
+```
+
+### E2E API Validation
+
+We have a robust gRPC validation script that tests the entire game lifecycle. You can run it against any Ruthless server:
+
+```bash
+# Ensure the server is running on localhost:8080
+bazel run //backend/scripts:validate_api -- --addr=localhost:8080
+```
+
+### Local PostgreSQL Setup
+
+For production-like testing, you can run PostgreSQL locally using Docker:
+
+```bash
+docker-compose up -d
+```
+
+This starts a Postgres instance on port 5432 with:
+- User: `ruthless_user`
+- Password: `ruthless_password`
+- Database: `ruthless_prod`
+
+To connect the server to Postgres:
+
+```bash
+bazel run //backend/cmd/cah -- server --storage=postgres --db-conn-str="postgres://ruthless_user:ruthless_password@localhost:5432/ruthless_prod?sslmode=disable"
+```
+
 ## Development
 
 To build the entire project and run all tests, use Bazel:
