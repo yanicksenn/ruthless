@@ -1,0 +1,14 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "postgres",
+    srcs = ["postgres.go"],
+    embedsrcs = glob(["migrations/*.sql"]),
+    importpath = "github.com/yanicksenn/ruthless/backend/internal/storage/postgres",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//api/v1:ruthlespb_go_proto",
+        "//backend/internal/storage",
+        "@com_github_lib_pq//:pq",
+    ],
+)
