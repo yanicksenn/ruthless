@@ -2,10 +2,15 @@ package cli
 
 import (
 	"log"
-	"net"
+	"net/http"
 	"os"
+	"strings"
 
+	"github.com/improbable-eng/grpc-web/go/grpcweb"
+	"github.com/rs/cors"
 	"github.com/spf13/cobra"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
 	
 	"github.com/yanicksenn/ruthless/backend/internal/auth"
@@ -86,19 +91,47 @@ var serverCmd = &cobra.Command{
 			}
 		}
 
-		listener, err := net.Listen("tcp", ":8080")
-		if err != nil {
-			log.Fatalf("Failed to listen: %v", err)
-		}
-
 		grpcServer := grpc.NewServer(
 			grpc.UnaryInterceptor(srv.UnaryAuthInterceptor()),
 		)
 
 		srv.RegisterWithGRPC(grpcServer)
 
-		log.Println("Listening on gRPC :8080")
-		if err := grpcServer.Serve(listener); err != nil {
+		wrappedGrpc := grpcweb.WrapServer(grpcServer,
+			grpcweb.WithOriginFunc(func(origin string) bool { return true }), // Allow all origins for now
+		)
+
+		corsHandler := cors.New(cors.Options{
+			AllowedOrigins:   []string{"*"},
+			AllowedMethods:   []string{"GET", "POST", "OPTIONS", "PUT", "DELETE"},
+			AllowedHeaders:   []string{"*"},
+			ExposedHeaders:   []string{"*"},
+			AllowCredentials: true,
+		})
+
+		httpHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			log.Printf("Incoming request: %s %s %s", r.Method, r.URL.Path, r.Proto)
+			
+			if wrappedGrpc.IsGrpcWebRequest(r) {
+				log.Println("Handling as gRPC-Web")
+				wrappedGrpc.ServeHTTP(w, r)
+				return
+			}
+			
+			if r.ProtoMajor == 2 && strings.Contains(r.Header.Get("Content-Type"), "application/grpc") {
+				log.Println("Handling as standard gRPC")
+				grpcServer.ServeHTTP(w, r)
+				return
+			}
+
+			log.Printf("Fallback: Not a gRPC or gRPC-Web request")
+			http.NotFound(w, r)
+		})
+
+		handler := corsHandler.Handler(h2c.NewHandler(httpHandler, &http2.Server{}))
+
+		log.Println("Listening on :8080 (gRPC and gRPC-Web)")
+		if err := http.ListenAndServe(":8080", handler); err != nil {
 			log.Fatalf("Server failed: %v", err)
 		}
 	},

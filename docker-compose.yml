@@ -33,5 +33,18 @@ services:
       db:
         condition: service_healthy
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_BASE_URL=http://localhost:8080
+        - VITE_GOOGLE_CLIENT_ID=${GOOGLE_AUDIENCE:-964146605436-cn068f6livloacebbi0itbhgvh9t5uns.apps.googleusercontent.com}
+    restart: on-failure
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
 volumes:
   ruthless_data:

@@ -1,5 +1,5 @@
 # Build stage
-FROM golang:1.24.2-alpine AS build
+FROM golang:1.25.0-alpine AS build
 
 # Install dependencies for protoc
 RUN apk add --no-cache protobuf-dev protoc
