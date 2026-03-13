@@ -46,6 +46,7 @@ message Session {
   string id = 1;
   repeated string player_ids = 2;
   repeated string deck_ids = 3;
+  string owner_id = 4;
 }
 
 enum GameState {
@@ -83,6 +84,9 @@ message Game {
   map<string, PlayerHand> hidden_hands = 6;
   repeated Card hidden_black_deck = 7;
   repeated Card hidden_white_deck = 8;
+  repeated Player players = 9;
+  repeated string player_ids = 10;
+  google.protobuf.Timestamp created_at = 11;
 }
 
 // ----------------- Card Service -----------------
@@ -180,6 +184,16 @@ service SessionService {
   rpc GetSession (GetSessionRequest) returns (Session);
   rpc AddDeckToSession (AddDeckToSessionRequest) returns (AddDeckToSessionResponse);
   rpc ListSessions (ListSessionsRequest) returns (ListSessionsResponse);
+}
+
+// ----------------- User Service -----------------
+
+message RegisterRequest {}
+message GetMeRequest {}
+
+service UserService {
+  rpc Register (RegisterRequest) returns (User);
+  rpc GetMe (GetMeRequest) returns (User);
 }
 
 // ----------------- Game Service -----------------

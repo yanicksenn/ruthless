@@ -11,7 +11,12 @@ import (
 )
 
 func (s *Server) CreateSession(ctx context.Context, req *pb.CreateSessionRequest) (*pb.Session, error) {
-	session := domain.NewSession()
+	player, ok := getPlayer(ctx)
+	if !ok {
+		return nil, status.Errorf(codes.Unauthenticated, "unauthorized")
+	}
+
+	session := domain.NewSession(player.Id)
 	if err := s.store.CreateSession(ctx, session); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create session")
 	}
@@ -54,6 +59,15 @@ func (s *Server) AddDeckToSession(ctx context.Context, req *pb.AddDeckToSessionR
 
 	if _, err := s.store.GetDeck(ctx, req.DeckId); err != nil {
 		return nil, status.Errorf(codes.NotFound, "deck not found")
+	}
+
+	player, ok := getPlayer(ctx)
+	if !ok {
+		return nil, status.Errorf(codes.Unauthenticated, "unauthorized")
+	}
+
+	if !domain.CanModifySession(session, player.Id) {
+		return nil, status.Errorf(codes.PermissionDenied, "only the owner can add decks to this session")
 	}
 
 	domain.AddDeckToSession(session, req.DeckId)

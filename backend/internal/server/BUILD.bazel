@@ -9,6 +9,7 @@ go_library(
         "seed.go",
         "server.go",
         "session_service.go",
+        "user_service.go",
     ],
     importpath = "github.com/yanicksenn/ruthless/backend/internal/server",
     visibility = ["//:__subpackages__"],

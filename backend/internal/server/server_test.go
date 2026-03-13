@@ -73,7 +73,7 @@ func TestServer_JoinSession(t *testing.T) {
 	auth := &mockAuth{} // auth not used for JoinSession directly here
 	srv := server.New(store, auth)
 
-	session := domain.NewSession()
+	session := domain.NewSession("owner-1")
 	err := store.CreateSession(context.Background(), session)
 	require.NoError(t, err)
 

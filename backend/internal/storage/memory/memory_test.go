@@ -51,7 +51,7 @@ func TestMemoryStorage_Sessions(t *testing.T) {
 	store := memory.New()
 	ctx := context.Background()
 
-	sess := domain.NewSession()
+	sess := domain.NewSession("owner-1")
 
 	err := store.CreateSession(ctx, sess)
 	if err != nil {

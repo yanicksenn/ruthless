@@ -1,0 +1,16 @@
+load("@rules_go//go:def.bzl", "go_test")
+
+go_test(
+    name = "registration_test",
+    srcs = ["registration_test.go"],
+    args = ["--client-secret=$(location //secrets:client_secret_dev.json)"],
+    data = [
+        "//secrets:client_secret_dev.json",
+        "//secrets:google_secrets",
+    ],
+    importpath = "github.com/yanicksenn/ruthless/backend/scripts/registration",
+    deps = [
+        "//api/v1:ruthlespb_go_proto",
+        "//backend/scripts/testutil",
+    ],
+)

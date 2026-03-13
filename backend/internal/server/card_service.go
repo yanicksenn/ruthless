@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -20,15 +21,18 @@ func (s *Server) ListCards(ctx context.Context, req *pb.ListCardsRequest) (*pb.L
 }
 
 func (s *Server) CreateCard(ctx context.Context, req *pb.CreateCardRequest) (*pb.Card, error) {
-	ownerID := ""
-	if p, ok := getPlayer(ctx); ok {
-		ownerID = p.Id
+	player, ok := getPlayer(ctx)
+	if !ok {
+		return nil, status.Errorf(codes.Unauthenticated, "unauthorized")
 	}
+	ownerID := player.Id
 
 	card, err := domain.NewCard(req.Text, ownerID)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
+
+	fmt.Printf("  [DEBUG] CreateCard: id=%s, text=%q, ownerID=%q\n", card.Id, card.Text, card.OwnerId)
 
 	if err := s.store.CreateCard(ctx, card); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to save card")

@@ -1,11 +1,19 @@
 # macOS
 .DS_Store
 
-# Go workspaces and binaries
+# Go
 bin/
 vendor/
 go.work
 go.work.sum
+# If you don't want to track your local binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
 
 # Bazel generated directories
 bazel-*
@@ -15,10 +23,24 @@ bazel-*
 .vscode/
 *.swp
 *.swo
+*.sublime-project
+*.sublime-workspace
 
-# Logs
+# Logs and test results
 *.log
-
-# Test and run scratch scripts created manually
-test_game.sh
+test_results.txt
 server.pid
+
+# Secrets and local configurations
+secrets/
+.env
+.env.*
+!.env.example
+docker-compose.override.yml
+
+# Python (if any scripts use it)
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/

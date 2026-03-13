@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -11,7 +12,47 @@ import (
 )
 
 func (s *Server) CreateGame(ctx context.Context, req *pb.CreateGameRequest) (*pb.Game, error) {
+	session, err := s.store.GetSession(ctx, req.SessionId)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "session not found")
+	}
+
 	game := domain.NewGame(req.SessionId)
+	game.PlayerIds = session.PlayerIds
+
+	// Denormalize players
+	for _, pid := range session.PlayerIds {
+		user, err := s.store.GetUser(ctx, pid)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to fetch player %s: %v", pid, err)
+		}
+		game.Players = append(game.Players, &pb.Player{
+			Id:   user.Id,
+			Name: user.Name,
+		})
+	}
+
+	// Denormalize cards/decks
+	cards, err := s.store.ListCards(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to fetch cards")
+	}
+	cardMap := make(map[string]*pb.Card)
+	for _, c := range cards {
+		cardMap[c.Id] = c
+	}
+
+	decks, err := s.store.ListDecks(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to fetch decks")
+	}
+	deckMap := make(map[string]*pb.Deck)
+	for _, d := range decks {
+		deckMap[d.Id] = d
+	}
+
+	domain.ConsolidateDecks(game, session.DeckIds, deckMap, cardMap)
+
 	if err := s.store.CreateGame(ctx, game); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create game")
 	}
@@ -34,28 +75,19 @@ func (s *Server) StartGame(ctx context.Context, req *pb.StartGameRequest) (*pb.G
 
 	session, err := s.store.GetSession(ctx, game.SessionId)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to fetch session")
+		return nil, status.Errorf(codes.NotFound, "session not found")
 	}
 
-	cards, err := s.store.ListCards(ctx)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to fetch cards")
-	}
-	cardMap := make(map[string]*pb.Card)
-	for _, c := range cards {
-		cardMap[c.Id] = c
+	player, ok := getPlayer(ctx)
+	if !ok {
+		return nil, status.Errorf(codes.Unauthenticated, "unauthorized")
 	}
 
-	decks, err := s.store.ListDecks(ctx)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to fetch decks")
-	}
-	deckMap := make(map[string]*pb.Deck)
-	for _, d := range decks {
-		deckMap[d.Id] = d
+	if !domain.CanModifySession(session, player.Id) {
+		return nil, status.Errorf(codes.PermissionDenied, "only the session owner can start the game")
 	}
 
-	if err := domain.StartGame(game, session, cardMap, deckMap); err != nil {
+	if err := domain.StartGame(game); err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "failed to start game: %v", err)
 	}
 
@@ -79,7 +111,11 @@ func (s *Server) PlayCards(ctx context.Context, req *pb.PlayCardsRequest) (*pb.P
 
 	play, err := domain.PlayCards(game, player.Id, req.CardIds)
 	if err != nil {
-		return nil, status.Errorf(codes.FailedPrecondition, "failed to play cards: %v", err)
+		code := codes.FailedPrecondition
+		if err == domain.ErrCzarCannotPlay || errors.Is(err, domain.ErrCzarCannotPlay) {
+			code = codes.PermissionDenied
+		}
+		return nil, status.Errorf(code, "failed to play cards: %v", err)
 	}
 
 	if err := s.store.UpdateGame(ctx, game); err != nil {
@@ -100,13 +136,12 @@ func (s *Server) SelectWinner(ctx context.Context, req *pb.SelectWinnerRequest) 
 		return nil, status.Errorf(codes.NotFound, "game not found")
 	}
 
-	session, err := s.store.GetSession(ctx, game.SessionId)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to fetch session")
-	}
-
-	if err := domain.SelectWinner(game, session, player.Id, req.PlayId); err != nil {
-		return nil, status.Errorf(codes.FailedPrecondition, "failed to select winner: %v", err)
+	if err := domain.SelectWinner(game, player.Id, req.PlayId); err != nil {
+		code := codes.FailedPrecondition
+		if err == domain.ErrNotCzar || errors.Is(err, domain.ErrNotCzar) {
+			code = codes.PermissionDenied
+		}
+		return nil, status.Errorf(code, "failed to select winner: %v", err)
 	}
 
 	if err := s.store.UpdateGame(ctx, game); err != nil {

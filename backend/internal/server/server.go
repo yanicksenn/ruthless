@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"google.golang.org/grpc"
@@ -19,6 +20,7 @@ type Server struct {
 	pb.UnimplementedDeckServiceServer
 	pb.UnimplementedSessionServiceServer
 	pb.UnimplementedGameServiceServer
+	pb.UnimplementedUserServiceServer
 
 	store storage.Storage
 	auth  auth.Authenticator
@@ -31,11 +33,12 @@ func New(store storage.Storage, authenticator auth.Authenticator) *Server {
 	}
 }
 
-func (s *Server) Register(grpcServer *grpc.Server) {
+func (s *Server) RegisterWithGRPC(grpcServer *grpc.Server) {
 	pb.RegisterCardServiceServer(grpcServer, s)
 	pb.RegisterDeckServiceServer(grpcServer, s)
 	pb.RegisterSessionServiceServer(grpcServer, s)
 	pb.RegisterGameServiceServer(grpcServer, s)
+	pb.RegisterUserServiceServer(grpcServer, s)
 }
 
 type contextKey string
@@ -49,8 +52,6 @@ func getPlayer(ctx context.Context) (*pb.Player, bool) {
 
 func (s *Server) UnaryAuthInterceptor() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-		// Only require auth for specific endpoints
-		// In a real app we might use method matching
 		if requiresAuth(info.FullMethod) {
 			md, ok := metadata.FromIncomingContext(ctx)
 			if !ok {
@@ -68,17 +69,14 @@ func (s *Server) UnaryAuthInterceptor() grpc.UnaryServerInterceptor {
 				return nil, status.Errorf(codes.Unauthenticated, "invalid token")
 			}
 
-			// Ensure player exists as a User in storage.
-			// This is necessary because some operations (like joining a session)
-			// depend on the user existence due to foreign key constraints.
-			err = s.store.CreateUser(ctx, &pb.User{
-				Id:   player.Id,
-				Name: player.Name,
-			})
-			if err != nil {
-				// We don't want to block the request if this fails (maybe?),
-				// but for E2E validation we need it to succeed.
-				// Log it at least.
+			fmt.Printf("  [DEBUG] Interceptor: method=%s, player.Id=%q\n", info.FullMethod, player.Id)
+
+			// Verify user exists in storage (unless registering)
+			if !strings.HasSuffix(info.FullMethod, "UserService/Register") {
+				_, err := s.store.GetUser(ctx, player.Id)
+				if err != nil {
+					return nil, status.Errorf(codes.PermissionDenied, "user not registered: %v", err)
+				}
 			}
 
 			ctx = context.WithValue(ctx, PlayerContextKey, player)
@@ -91,27 +89,29 @@ func requiresAuth(method string) bool {
 	// Let's require auth for everything except Get and List for now, and Creates that are open.
 	// We will mirror the Chi router behaviour:
 	// /decks (POST requires auth), /decks (GET public), /decks/{id}/contributors (POST/DELETE auth), etc.
-	if strings.Contains(method, "CardService") {
-		return false // CreateCard had no authMiddleware in Chi router
+	if strings.Contains(method, "CardService/CreateCard") {
+		return true // Card creation should be authenticated
 	}
-	if strings.Contains(method, "SessionService/CreateSession") || strings.Contains(method, "SessionService/GetSession") {
-		return false
-	}
-	if strings.Contains(method, "SessionService/JoinSession") {
-		return true // Was behind authMiddleware in Chi
-	}
-	if strings.Contains(method, "DeckService/ListDecks") || strings.Contains(method, "DeckService/GetDeck") {
-		return false
+	if strings.HasPrefix(method, "/ruthless.v1.SessionService/") {
+		if strings.Contains(method, "GetSession") || strings.Contains(method, "ListSessions") {
+			return false
+		}
+		return true // CreateSession, JoinSession, AddDeckToSession
 	}
 	if strings.HasPrefix(method, "/ruthless.v1.DeckService/") {
-		// CreateDeck, AddContributor, RemoveContributor, AddCardToDeck, RemoveCardFromDeck
-		return true 
+		if strings.Contains(method, "ListDecks") || strings.Contains(method, "GetDeck") {
+			return false
+		}
+		return true // CreateDeck, AddContributor, RemoveContributor, AddCardToDeck, RemoveCardFromDeck
+	}
+	if strings.HasPrefix(method, "/ruthless.v1.UserService/") {
+		return true // Register and GetMe require auth context
 	}
 	if strings.HasPrefix(method, "/ruthless.v1.GameService/") {
 		if strings.Contains(method, "GetGame") || strings.Contains(method, "CreateGame") {
 			return false
 		}
-		return true
+		return true // StartGame, PlayCards, SelectWinner, GetHand
 	}
 	return false
 }

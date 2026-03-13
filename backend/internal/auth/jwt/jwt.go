@@ -4,48 +4,58 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/golang-jwt/jwt/v5"
+	"github.com/coreos/go-oidc/v3/oidc"
 	pb "github.com/yanicksenn/ruthless/api/v1"
 	"github.com/yanicksenn/ruthless/backend/internal/auth"
 )
 
 type Authenticator struct {
-	secret []byte
+	verifier *oidc.IDTokenVerifier
 }
 
-func New(secret string) *Authenticator {
-	return &Authenticator{
-		secret: []byte(secret),
+func NewGoogle(ctx context.Context, audience string) (*Authenticator, error) {
+	provider, err := oidc.NewProvider(ctx, "https://accounts.google.com")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get provider: %v", err)
 	}
+
+	config := &oidc.Config{
+		ClientID: audience,
+	}
+	verifier := provider.Verifier(config)
+
+	return &Authenticator{
+		verifier: verifier,
+	}, nil
 }
 
 func (a *Authenticator) Authenticate(ctx context.Context, tokenString string) (*pb.Player, error) {
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-		return a.secret, nil
-	})
-
-	if err != nil || !token.Valid {
+	idToken, err := a.verifier.Verify(ctx, tokenString)
+	if err != nil {
 		return nil, auth.ErrUnauthorized
 	}
 
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
+	var claims struct {
+		Subject string `json:"sub"`
+		Name    string `json:"name"`
+		Email   string `json:"email"`
+	}
+	if err := idToken.Claims(&claims); err != nil {
 		return nil, auth.ErrUnauthorized
 	}
 
-	// In a real production system (e.g. Firebase), these would be "sub" and "name"
-	id, _ := claims["sub"].(string)
-	name, _ := claims["name"].(string)
-
-	if id == "" {
+	if claims.Subject == "" {
 		return nil, auth.ErrUnauthorized
+	}
+
+	// For Google, we use the display name or email if name is missing
+	name := claims.Name
+	if name == "" {
+		name = claims.Email
 	}
 
 	return &pb.Player{
-		Id:   id,
+		Id:   claims.Subject,
 		Name: name,
 	}, nil
 }

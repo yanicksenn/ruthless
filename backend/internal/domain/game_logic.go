@@ -23,20 +23,8 @@ var (
 
 const HandSize = 10
 
-func StartGame(game *pb.Game, session *pb.Session, allCards map[string]*pb.Card, allDecks map[string]*pb.Deck) error {
-	if game.State != pb.GameState_GAME_STATE_WAITING {
-		return ErrGameNotWaiting
-	}
-	if len(session.PlayerIds) < 3 {
-		// Just for testing, maybe no strict player limit but typical is 3
-		// We'll allow 2 for easier testing
-	}
-
-	game.HiddenBlackDeck = make([]*pb.Card, 0)
-	game.HiddenWhiteDeck = make([]*pb.Card, 0)
-
-	// Consolidate decks
-	for _, deckID := range session.DeckIds {
+func ConsolidateDecks(game *pb.Game, deckIDs []string, allDecks map[string]*pb.Deck, allCards map[string]*pb.Card) {
+	for _, deckID := range deckIDs {
 		deck, ok := allDecks[deckID]
 		if !ok {
 			continue
@@ -52,6 +40,15 @@ func StartGame(game *pb.Game, session *pb.Session, allCards map[string]*pb.Card,
 				game.HiddenWhiteDeck = append(game.HiddenWhiteDeck, card)
 			}
 		}
+	}
+}
+
+func StartGame(game *pb.Game) error {
+	if game.State != pb.GameState_GAME_STATE_WAITING {
+		return ErrGameNotWaiting
+	}
+	if len(game.PlayerIds) < 2 {
+		return errors.New("not enough players")
 	}
 
 	if len(game.HiddenBlackDeck) == 0 || len(game.HiddenWhiteDeck) == 0 {
@@ -71,7 +68,7 @@ func StartGame(game *pb.Game, session *pb.Session, allCards map[string]*pb.Card,
 	game.HiddenHands = make(map[string]*pb.PlayerHand)
 	game.Scores = make(map[string]uint32)
 
-	for _, pid := range session.PlayerIds {
+	for _, pid := range game.PlayerIds {
 		game.Scores[pid] = 0
 		hand := &pb.PlayerHand{Cards: make([]*pb.Card, 0)}
 		for i := 0; i < HandSize; i++ {
@@ -84,7 +81,7 @@ func StartGame(game *pb.Game, session *pb.Session, allCards map[string]*pb.Card,
 	}
 
 	// Start round 1
-	startNewRound(game, session.PlayerIds)
+	startNewRound(game, game.PlayerIds)
 	return nil
 }
 
@@ -190,7 +187,7 @@ func PlayCards(game *pb.Game, playerID string, cardIDs []string) (*pb.Play, erro
 	return play, nil
 }
 
-func SelectWinner(game *pb.Game, session *pb.Session, czarID, playID string) error {
+func SelectWinner(game *pb.Game, czarID, playID string) error {
 	if game.State != pb.GameState_GAME_STATE_JUDGING {
 		return ErrInvalidState
 	}
@@ -215,7 +212,7 @@ func SelectWinner(game *pb.Game, session *pb.Session, czarID, playID string) err
 	currentRound.WinningPlayId = winningPlay.Id
 	game.Scores[winningPlay.PlayerId]++
 
-	startNewRound(game, session.PlayerIds)
+	startNewRound(game, game.PlayerIds)
 	return nil
 }
 
@@ -227,6 +224,9 @@ func StripHidden(game *pb.Game) *pb.Game {
 		State:     game.State,
 		Rounds:    game.Rounds, // rounds are safe to share
 		Scores:    game.Scores,
+		Players:   game.Players,
+		PlayerIds: game.PlayerIds,
+		CreatedAt: game.CreatedAt,
 	}
 	return clone
 }

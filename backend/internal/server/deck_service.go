@@ -97,9 +97,14 @@ func (s *Server) AddCardToDeck(ctx context.Context, req *pb.AddCardToDeckRequest
 		return nil, status.Errorf(codes.NotFound, "deck not found")
 	}
 
-	// Validate card exists
-	if _, err := s.store.GetCard(ctx, req.CardId); err != nil {
+	// Validate card exists and is owned by the player
+	card, err := s.store.GetCard(ctx, req.CardId)
+	if err != nil {
 		return nil, status.Errorf(codes.NotFound, "card not found")
+	}
+
+	if card.OwnerId != player.Id {
+		return nil, status.Errorf(codes.PermissionDenied, "you do not own this card")
 	}
 
 	if err := domain.AddCardToDeck(deck, player.Id, req.CardId); err != nil {

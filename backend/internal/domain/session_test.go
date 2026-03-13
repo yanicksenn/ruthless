@@ -9,7 +9,7 @@ import (
 )
 
 func TestSession_AddPlayer(t *testing.T) {
-	session := domain.NewSession()
+	session := domain.NewSession("owner-1")
 	player := domain.NewPlayer("Alice")
 
 	domain.AddPlayerToSession(session, player.Id)
@@ -19,7 +19,7 @@ func TestSession_AddPlayer(t *testing.T) {
 }
 
 func TestSession_AddDeck(t *testing.T) {
-	session := domain.NewSession()
+	session := domain.NewSession("owner-1")
 	deck := domain.NewDeck("My Deck", "owner-1")
 
 	domain.AddDeckToSession(session, deck.Id)

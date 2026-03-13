@@ -3,6 +3,7 @@ package cli
 import (
 	"log"
 	"net"
+	"os"
 
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
@@ -21,13 +22,27 @@ var (
 	authFlag    string
 	seedFlag    string
 	dbConnStr   string
-	authSecret  string
+	authSecret     string
+	googleAudience string
 )
+
+func getEnv(key, fallback string) string {
+	if value, ok := os.LookupEnv(key); ok {
+		return value
+	}
+	return fallback
+}
 
 var serverCmd = &cobra.Command{
 	Use:   "server",
 	Short: "Start the gRPC API server",
 	Run: func(cmd *cobra.Command, args []string) {
+		// Priority: Flag > Env > Default
+		storageFlag = getEnv("STORAGE", storageFlag)
+		authFlag = getEnv("AUTH", authFlag)
+		dbConnStr = getEnv("DB_CONN_STR", dbConnStr)
+		googleAudience = getEnv("GOOGLE_AUDIENCE", googleAudience)
+
 		log.Printf("Starting server with storage=%s auth=%s", storageFlag, authFlag)
 
 		// Setup Storage
@@ -48,8 +63,12 @@ var serverCmd = &cobra.Command{
 		var authenticator auth.Authenticator
 		if authFlag == "fake" {
 			authenticator = fake.New()
-		} else if authFlag == "jwt" {
-			authenticator = jwt.New(authSecret)
+		} else if authFlag == "google" {
+			var err error
+			authenticator, err = jwt.NewGoogle(cmd.Context(), googleAudience)
+			if err != nil {
+				log.Fatalf("Failed to initialize Google OIDC: %v", err)
+			}
 		} else {
 			log.Fatalf("Unsupported auth type: %s", authFlag)
 		}
@@ -76,7 +95,7 @@ var serverCmd = &cobra.Command{
 			grpc.UnaryInterceptor(srv.UnaryAuthInterceptor()),
 		)
 
-		srv.Register(grpcServer)
+		srv.RegisterWithGRPC(grpcServer)
 
 		log.Println("Listening on gRPC :8080")
 		if err := grpcServer.Serve(listener); err != nil {
@@ -91,5 +110,6 @@ func init() {
 	serverCmd.Flags().StringVar(&authFlag, "auth", "fake", "auth mechanism (fake|jwt)")
 	serverCmd.Flags().StringVar(&seedFlag, "seed", "", "path to a JSON seed file (only works with --storage=memory)")
 	serverCmd.Flags().StringVar(&dbConnStr, "db-conn-str", "", "PostgreSQL connection string")
-	serverCmd.Flags().StringVar(&authSecret, "auth-secret", "dev-secret", "JWT shared secret for auth")
+	serverCmd.Flags().StringVar(&authSecret, "auth-secret", "dev-secret", "JWT shared secret for auth (only for 'jwt' type)")
+	serverCmd.Flags().StringVar(&googleAudience, "google-audience", "", "Google OAuth Client ID (required for 'google' type)")
 }

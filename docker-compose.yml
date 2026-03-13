@@ -8,8 +8,30 @@ services:
       POSTGRES_DB: ruthless_prod
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ruthless_user -d ruthless_prod"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     volumes:
       - ruthless_data:/var/lib/postgresql/data
+  
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: on-failure
+    ports:
+      - "8080:8080"
+    environment:
+      - STORAGE=postgres
+      - DB_CONN_STR=postgres://ruthless_user:ruthless_password@db:5432/ruthless_prod?sslmode=disable
+      - AUTH=${AUTH:-google}
+      - GOOGLE_AUDIENCE=${GOOGLE_AUDIENCE:-964146605436-cn068f6livloacebbi0itbhgvh9t5uns.apps.googleusercontent.com}
+    command: ["server"]
+    depends_on:
+      db:
+        condition: service_healthy
 
 volumes:
   ruthless_data:

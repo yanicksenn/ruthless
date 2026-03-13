@@ -199,7 +199,7 @@ func (s *Storage) CreateSession(ctx context.Context, session *pb.Session) error 
 	}
 	defer tx.Rollback()
 
-	_, err = tx.ExecContext(ctx, "INSERT INTO sessions (id) VALUES ($1)", session.Id)
+	_, err = tx.ExecContext(ctx, "INSERT INTO sessions (id, owner_id) VALUES ($1, $2)", session.Id, session.OwnerId)
 	if err != nil {
 		return err
 	}
@@ -222,9 +222,9 @@ func (s *Storage) CreateSession(ctx context.Context, session *pb.Session) error 
 }
 
 func (s *Storage) GetSession(ctx context.Context, id string) (*pb.Session, error) {
-	row := s.db.QueryRowContext(ctx, "SELECT id FROM sessions WHERE id = $1", id)
+	row := s.db.QueryRowContext(ctx, "SELECT id, owner_id FROM sessions WHERE id = $1", id)
 	var session pb.Session
-	if err := row.Scan(&session.Id); err != nil {
+	if err := row.Scan(&session.Id, &session.OwnerId); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, storage.ErrNotFound
 		}
@@ -270,15 +270,14 @@ func (s *Storage) UpdateSession(ctx context.Context, session *pb.Session) error 
 	defer tx.Rollback()
 
 	// Ensure session exists
-	var dummy string
-	err = tx.QueryRowContext(ctx, "SELECT id FROM sessions WHERE id = $1", session.Id).Scan(&dummy)
-	if err == sql.ErrNoRows {
-		return storage.ErrNotFound
-	} else if err != nil {
+	res, err := tx.ExecContext(ctx, "UPDATE sessions SET owner_id = $1 WHERE id = $2", session.OwnerId, session.Id)
+	if err != nil {
 		return err
 	}
-
-	// Update players
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected == 0 {
+		return storage.ErrNotFound
+	}
 	_, err = tx.ExecContext(ctx, "DELETE FROM session_players WHERE session_id = $1", session.Id)
 	if err != nil {
 		return err
@@ -306,19 +305,20 @@ func (s *Storage) UpdateSession(ctx context.Context, session *pb.Session) error 
 }
 
 func (s *Storage) ListSessions(ctx context.Context) ([]*pb.Session, error) {
-	rows, err := s.db.QueryContext(ctx, "SELECT id FROM sessions")
+	rows, err := s.db.QueryContext(ctx, "SELECT id, owner_id FROM sessions")
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-
+ 
 	var sessions []*pb.Session
 	for rows.Next() {
 		var sID string
-		if err := rows.Scan(&sID); err != nil {
+		var oID string
+		if err := rows.Scan(&sID, &oID); err != nil {
 			return nil, err
 		}
-		sessions = append(sessions, &pb.Session{Id: sID})
+		sessions = append(sessions, &pb.Session{Id: sID, OwnerId: oID})
 	}
 
 	for _, sess := range sessions {
@@ -545,31 +545,39 @@ func (s *Storage) CreateGame(ctx context.Context, game *pb.Game) error {
 	black, _ := json.Marshal(game.HiddenBlackDeck)
 	white, _ := json.Marshal(game.HiddenWhiteDeck)
 	rounds, _ := json.Marshal(game.Rounds)
+	players, _ := json.Marshal(game.Players)
+	playerIDs, _ := json.Marshal(game.PlayerIds)
 
 	_, err := s.db.ExecContext(ctx, `INSERT INTO games 
-		(id, session_id, state, scores, hidden_hands, hidden_black_deck, hidden_white_deck, rounds) 
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-		game.Id, game.SessionId, int32(game.State), scores, hands, black, white, rounds)
+		(id, session_id, state, scores, hidden_hands, hidden_black_deck, hidden_white_deck, rounds, players, player_ids) 
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+		game.Id, game.SessionId, int32(game.State), scores, hands, black, white, rounds, players, playerIDs)
 	return err
 }
 
 func (s *Storage) GetGame(ctx context.Context, id string) (*pb.Game, error) {
-	row := s.db.QueryRowContext(ctx, "SELECT id, session_id, state, scores, hidden_hands, hidden_black_deck, hidden_white_deck, rounds FROM games WHERE id = $1", id)
+	row := s.db.QueryRowContext(ctx, "SELECT id, session_id, state, scores, hidden_hands, hidden_black_deck, hidden_white_deck, rounds, players, player_ids, created_at FROM games WHERE id = $1", id)
 	var g pb.Game
 	var state int32
-	var scores, hands, black, white, rounds []byte
-	if err := row.Scan(&g.Id, &g.SessionId, &state, &scores, &hands, &black, &white, &rounds); err != nil {
+	var scores, hands, black, white, rounds, players, playerIDs []byte
+	var createdAt sql.NullTime
+	if err := row.Scan(&g.Id, &g.SessionId, &state, &scores, &hands, &black, &white, &rounds, &players, &playerIDs, &createdAt); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, storage.ErrNotFound
 		}
 		return nil, err
 	}
 	g.State = pb.GameState(state)
+	if createdAt.Valid {
+		g.CreatedAt = timestamppb.New(createdAt.Time)
+	}
 	json.Unmarshal(scores, &g.Scores)
 	json.Unmarshal(hands, &g.HiddenHands)
 	json.Unmarshal(black, &g.HiddenBlackDeck)
 	json.Unmarshal(white, &g.HiddenWhiteDeck)
 	json.Unmarshal(rounds, &g.Rounds)
+	json.Unmarshal(players, &g.Players)
+	json.Unmarshal(playerIDs, &g.PlayerIds)
 	return &g, nil
 }
 
@@ -579,11 +587,13 @@ func (s *Storage) UpdateGame(ctx context.Context, game *pb.Game) error {
 	black, _ := json.Marshal(game.HiddenBlackDeck)
 	white, _ := json.Marshal(game.HiddenWhiteDeck)
 	rounds, _ := json.Marshal(game.Rounds)
+	players, _ := json.Marshal(game.Players)
+	playerIDs, _ := json.Marshal(game.PlayerIds)
 
 	res, err := s.db.ExecContext(ctx, `UPDATE games 
-		SET state = $1, scores = $2, hidden_hands = $3, hidden_black_deck = $4, hidden_white_deck = $5, rounds = $6 
-		WHERE id = $7`,
-		int32(game.State), scores, hands, black, white, rounds, game.Id)
+		SET state = $1, scores = $2, hidden_hands = $3, hidden_black_deck = $4, hidden_white_deck = $5, rounds = $6, players = $7, player_ids = $8 
+		WHERE id = $9`,
+		int32(game.State), scores, hands, black, white, rounds, players, playerIDs, game.Id)
 	if err != nil {
 		return err
 	}
