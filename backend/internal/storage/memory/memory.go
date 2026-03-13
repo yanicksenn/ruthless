@@ -6,6 +6,7 @@ import (
 
 	pb "github.com/yanicksenn/ruthless/api/v1"
 	"github.com/yanicksenn/ruthless/backend/internal/storage"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type Storage struct {
@@ -30,6 +31,9 @@ func New() *Storage {
 func (s *Storage) CreateCard(ctx context.Context, card *pb.Card) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if card.CreatedAt == nil {
+		card.CreatedAt = timestamppb.Now()
+	}
 	s.cards[card.Id] = card
 	return nil
 }
@@ -38,6 +42,9 @@ func (s *Storage) CreateCard(ctx context.Context, card *pb.Card) error {
 func (s *Storage) CreateUser(ctx context.Context, user *pb.User) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if user.CreatedAt == nil {
+		user.CreatedAt = timestamppb.Now()
+	}
 	s.users[user.Id] = user
 	return nil
 }
@@ -115,6 +122,9 @@ func (s *Storage) ListSessions(ctx context.Context) ([]*pb.Session, error) {
 func (s *Storage) CreateDeck(ctx context.Context, deck *pb.Deck) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if deck.CreatedAt == nil {
+		deck.CreatedAt = timestamppb.Now()
+	}
 	s.decks[deck.Id] = deck
 	return nil
 }
@@ -135,6 +145,7 @@ func (s *Storage) UpdateDeck(ctx context.Context, deck *pb.Deck) error {
 	if _, ok := s.decks[deck.Id]; !ok {
 		return storage.ErrNotFound
 	}
+	deck.UpdatedAt = timestamppb.Now()
 	s.decks[deck.Id] = deck
 	return nil
 }

@@ -13,7 +13,7 @@ func TestMemoryStorage_Cards(t *testing.T) {
 	store := memory.New()
 	ctx := context.Background()
 
-	card, err := domain.NewCard("A fast ___")
+	card, err := domain.NewCard("A fast ___", "owner-1")
 	if err != nil {
 		t.Fatalf("Failed to create card: %v", err)
 	}

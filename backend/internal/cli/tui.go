@@ -156,9 +156,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.selected = append(m.selected[:found], m.selected[found+1:]...)
 					} else {
 						// Add if not at limit
-						if len(m.selected) < int(round.BlackCard.Blanks) {
-							m.selected = append(m.selected, m.cursor)
-						}
+					if len(m.selected) < strings.Count(round.BlackCard.Text, "___") {
+						m.selected = append(m.selected, m.cursor)
+					}
 					}
 				}
 			} else if m.game != nil && m.game.State == pb.GameState_GAME_STATE_JUDGING {
@@ -284,7 +284,8 @@ func (m model) View() string {
 		
 		bcText := round.BlackCard.Text
 		if m.game.State == pb.GameState_GAME_STATE_JUDGING && len(round.Plays) > 0 {
-			bcText = renderBlackCard(bcText, round.Plays[m.cursor].Cards)
+			plays := getSortedPlays(round.Plays)
+			bcText = renderBlackCard(bcText, plays[m.cursor].Cards)
 			s.WriteString(fmt.Sprintf("\nViewing submission %d of %d (left/right to navigate)\n", m.cursor+1, len(round.Plays)))
 		}
 
@@ -335,7 +336,7 @@ func (m model) View() string {
 				}
 
 				if found != -1 {
-					if round.BlackCard.Blanks > 1 {
+					if strings.Count(round.BlackCard.Text, "___") > 1 {
 						selected = fmt.Sprintf("%d", found+1)
 					} else {
 						selected = "*"
@@ -456,7 +457,7 @@ func (m model) playCards() tea.Cmd {
 			}
 		}
 
-		if len(cardIDs) != int(round.BlackCard.Blanks) {
+		if len(cardIDs) != strings.Count(round.BlackCard.Text, "___") {
 			return nil // Don't allow submission if not enough cards
 		}
 
@@ -485,7 +486,8 @@ func (m model) selectWinner() tea.Cmd {
 		if m.cursor >= len(round.Plays) {
 			return nil
 		}
-		playID := round.Plays[m.cursor].Id
+		plays := getSortedPlays(round.Plays)
+		playID := plays[m.cursor].Id
 
 		client := pb.NewGameServiceClient(m.conn)
 		_, err := client.SelectWinner(m.token, &pb.SelectWinnerRequest{
@@ -520,10 +522,20 @@ func hasSubmitted(game *pb.Game, playerID string) bool {
 		return false
 	}
 	round := game.Rounds[len(game.Rounds)-1]
-	for _, p := range round.Plays {
-		if p.PlayerId == playerID {
-			return true
-		}
+	_, ok := round.Plays[playerID]
+	return ok
+}
+
+func getSortedPlays(plays map[string]*pb.Play) []*pb.Play {
+	playerIDs := make([]string, 0, len(plays))
+	for pid := range plays {
+		playerIDs = append(playerIDs, pid)
 	}
-	return false
+	sort.Strings(playerIDs)
+
+	sorted := make([]*pb.Play, 0, len(plays))
+	for _, pid := range playerIDs {
+		sorted = append(sorted, plays[pid])
+	}
+	return sorted
 }

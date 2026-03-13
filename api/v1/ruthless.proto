@@ -4,10 +4,21 @@ package ruthless.v1;
 
 option go_package = "github.com/yanicksenn/ruthless/api/v1;ruthlespb";
 
+import "google/protobuf/timestamp.proto";
+
+enum CardColor {
+  CARD_COLOR_UNSPECIFIED = 0;
+  CARD_COLOR_BLACK = 1;
+  CARD_COLOR_WHITE = 2;
+}
+
 message Card {
   string id = 1;
   string text = 2;
-  uint32 blanks = 3; // 0 for white cards, >0 for black cards
+  CardColor color = 3;
+  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp updated_at = 5;
+  string owner_id = 6;
 }
 
 message Player {
@@ -18,6 +29,7 @@ message Player {
 message User {
   string id = 1;
   string name = 2;
+  google.protobuf.Timestamp created_at = 3;
 }
 
 message Deck {
@@ -26,6 +38,8 @@ message Deck {
   string owner_id = 3;
   repeated string contributors = 4;
   repeated string card_ids = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
 }
 
 message Session {
@@ -56,7 +70,7 @@ message Round {
   string id = 1;
   string czar_id = 2;
   Card black_card = 3;
-  repeated Play plays = 4;
+  map<string, Play> plays = 4;
   string winning_play_id = 5;
 }
 

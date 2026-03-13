@@ -12,6 +12,7 @@ import (
 	_ "github.com/lib/pq"
 	pb "github.com/yanicksenn/ruthless/api/v1"
 	"github.com/yanicksenn/ruthless/backend/internal/storage"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 //go:embed migrations/*.sql
@@ -106,24 +107,38 @@ func (s *Storage) Init() error {
 
 // Card operations
 func (s *Storage) CreateCard(ctx context.Context, card *pb.Card) error {
-	_, err := s.db.ExecContext(ctx, "INSERT INTO cards (id, text, blanks) VALUES ($1, $2, $3)", card.Id, card.Text, card.Blanks)
+	_, err := s.db.ExecContext(ctx, "INSERT INTO cards (id, text, color, owner_id) VALUES ($1, $2, $3, $4)", card.Id, card.Text, int32(card.Color), card.OwnerId)
 	return err
 }
 
 func (s *Storage) GetCard(ctx context.Context, id string) (*pb.Card, error) {
-	row := s.db.QueryRowContext(ctx, "SELECT id, text, blanks FROM cards WHERE id = $1", id)
+	row := s.db.QueryRowContext(ctx, "SELECT id, text, color, owner_id, created_at, updated_at FROM cards WHERE id = $1", id)
 	var c pb.Card
-	if err := row.Scan(&c.Id, &c.Text, &c.Blanks); err != nil {
+	var color int32
+	var createdAt sql.NullTime
+	var updatedAt sql.NullTime
+	var ownerID sql.NullString
+	if err := row.Scan(&c.Id, &c.Text, &color, &ownerID, &createdAt, &updatedAt); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, storage.ErrNotFound
 		}
 		return nil, err
 	}
+	c.Color = pb.CardColor(color)
+	if ownerID.Valid {
+		c.OwnerId = ownerID.String
+	}
+	if createdAt.Valid {
+		c.CreatedAt = timestamppb.New(createdAt.Time)
+	}
+	if updatedAt.Valid {
+		c.UpdatedAt = timestamppb.New(updatedAt.Time)
+	}
 	return &c, nil
 }
 
 func (s *Storage) ListCards(ctx context.Context) ([]*pb.Card, error) {
-	rows, err := s.db.QueryContext(ctx, "SELECT id, text, blanks FROM cards")
+	rows, err := s.db.QueryContext(ctx, "SELECT id, text, color, owner_id, created_at, updated_at FROM cards")
 	if err != nil {
 		return nil, err
 	}
@@ -132,8 +147,22 @@ func (s *Storage) ListCards(ctx context.Context) ([]*pb.Card, error) {
 	var cards []*pb.Card
 	for rows.Next() {
 		var c pb.Card
-		if err := rows.Scan(&c.Id, &c.Text, &c.Blanks); err != nil {
+		var color int32
+		var createdAt sql.NullTime
+		var updatedAt sql.NullTime
+		var ownerID sql.NullString
+		if err := rows.Scan(&c.Id, &c.Text, &color, &ownerID, &createdAt, &updatedAt); err != nil {
 			return nil, err
+		}
+		c.Color = pb.CardColor(color)
+		if ownerID.Valid {
+			c.OwnerId = ownerID.String
+		}
+		if createdAt.Valid {
+			c.CreatedAt = timestamppb.New(createdAt.Time)
+		}
+		if updatedAt.Valid {
+			c.UpdatedAt = timestamppb.New(updatedAt.Time)
 		}
 		cards = append(cards, &c)
 	}
@@ -146,47 +175,138 @@ func (s *Storage) CreateUser(ctx context.Context, user *pb.User) error {
 	return err
 }
 
-// Session operations
-func (s *Storage) CreateSession(ctx context.Context, session *pb.Session) error {
-	pids, _ := json.Marshal(session.PlayerIds)
-	dids, _ := json.Marshal(session.DeckIds)
-	_, err := s.db.ExecContext(ctx, "INSERT INTO sessions (id, player_ids, deck_ids) VALUES ($1, $2, $3)", session.Id, pids, dids)
-	return err
-}
-
-func (s *Storage) GetSession(ctx context.Context, id string) (*pb.Session, error) {
-	row := s.db.QueryRowContext(ctx, "SELECT id, player_ids, deck_ids FROM sessions WHERE id = $1", id)
-	var s_id string
-	var pids, dids []byte
-	if err := row.Scan(&s_id, &pids, &dids); err != nil {
+func (s *Storage) GetUser(ctx context.Context, id string) (*pb.User, error) {
+	row := s.db.QueryRowContext(ctx, "SELECT id, name, created_at FROM users WHERE id = $1", id)
+	var u pb.User
+	var createdAt sql.NullTime
+	if err := row.Scan(&u.Id, &u.Name, &createdAt); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, storage.ErrNotFound
 		}
 		return nil, err
 	}
+	if createdAt.Valid {
+		u.CreatedAt = timestamppb.New(createdAt.Time)
+	}
+	return &u, nil
+}
+
+// Session operations
+func (s *Storage) CreateSession(ctx context.Context, session *pb.Session) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	_, err = tx.ExecContext(ctx, "INSERT INTO sessions (id) VALUES ($1)", session.Id)
+	if err != nil {
+		return err
+	}
+
+	for _, playerID := range session.PlayerIds {
+		_, err = tx.ExecContext(ctx, "INSERT INTO session_players (session_id, player_id) VALUES ($1, $2)", session.Id, playerID)
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, deckID := range session.DeckIds {
+		_, err = tx.ExecContext(ctx, "INSERT INTO session_decks (session_id, deck_id) VALUES ($1, $2)", session.Id, deckID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+func (s *Storage) GetSession(ctx context.Context, id string) (*pb.Session, error) {
+	row := s.db.QueryRowContext(ctx, "SELECT id FROM sessions WHERE id = $1", id)
 	var session pb.Session
-	session.Id = s_id
-	json.Unmarshal(pids, &session.PlayerIds)
-	json.Unmarshal(dids, &session.DeckIds)
+	if err := row.Scan(&session.Id); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, storage.ErrNotFound
+		}
+		return nil, err
+	}
+
+	// Fetch players
+	pRows, err := s.db.QueryContext(ctx, "SELECT player_id FROM session_players WHERE session_id = $1", id)
+	if err != nil {
+		return nil, err
+	}
+	defer pRows.Close()
+	for pRows.Next() {
+		var pID string
+		if err := pRows.Scan(&pID); err != nil {
+			return nil, err
+		}
+		session.PlayerIds = append(session.PlayerIds, pID)
+	}
+
+	// Fetch decks
+	dRows, err := s.db.QueryContext(ctx, "SELECT deck_id FROM session_decks WHERE session_id = $1", id)
+	if err != nil {
+		return nil, err
+	}
+	defer dRows.Close()
+	for dRows.Next() {
+		var dID string
+		if err := dRows.Scan(&dID); err != nil {
+			return nil, err
+		}
+		session.DeckIds = append(session.DeckIds, dID)
+	}
+
 	return &session, nil
 }
 
 func (s *Storage) UpdateSession(ctx context.Context, session *pb.Session) error {
-	pids, _ := json.Marshal(session.PlayerIds)
-	dids, _ := json.Marshal(session.DeckIds)
-	res, err := s.db.ExecContext(ctx, "UPDATE sessions SET player_ids = $1, deck_ids = $2 WHERE id = $3", pids, dids, session.Id)
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
-	rows, _ := res.RowsAffected()
-	if rows == 0 {
+	defer tx.Rollback()
+
+	// Ensure session exists
+	var dummy string
+	err = tx.QueryRowContext(ctx, "SELECT id FROM sessions WHERE id = $1", session.Id).Scan(&dummy)
+	if err == sql.ErrNoRows {
 		return storage.ErrNotFound
+	} else if err != nil {
+		return err
 	}
-	return nil
+
+	// Update players
+	_, err = tx.ExecContext(ctx, "DELETE FROM session_players WHERE session_id = $1", session.Id)
+	if err != nil {
+		return err
+	}
+	for _, pID := range session.PlayerIds {
+		_, err = tx.ExecContext(ctx, "INSERT INTO session_players (session_id, player_id) VALUES ($1, $2)", session.Id, pID)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Update decks
+	_, err = tx.ExecContext(ctx, "DELETE FROM session_decks WHERE session_id = $1", session.Id)
+	if err != nil {
+		return err
+	}
+	for _, dID := range session.DeckIds {
+		_, err = tx.ExecContext(ctx, "INSERT INTO session_decks (session_id, deck_id) VALUES ($1, $2)", session.Id, dID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
 func (s *Storage) ListSessions(ctx context.Context) ([]*pb.Session, error) {
-	rows, err := s.db.QueryContext(ctx, "SELECT id, player_ids, deck_ids FROM sessions")
+	rows, err := s.db.QueryContext(ctx, "SELECT id FROM sessions")
 	if err != nil {
 		return nil, err
 	}
@@ -194,59 +314,172 @@ func (s *Storage) ListSessions(ctx context.Context) ([]*pb.Session, error) {
 
 	var sessions []*pb.Session
 	for rows.Next() {
-		var s_id string
-		var pids, dids []byte
-		if err := rows.Scan(&s_id, &pids, &dids); err != nil {
+		var sID string
+		if err := rows.Scan(&sID); err != nil {
 			return nil, err
 		}
-		var session pb.Session
-		session.Id = s_id
-		json.Unmarshal(pids, &session.PlayerIds)
-		json.Unmarshal(dids, &session.DeckIds)
-		sessions = append(sessions, &session)
+		sessions = append(sessions, &pb.Session{Id: sID})
 	}
+
+	for _, sess := range sessions {
+		// Players
+		pRows, err := s.db.QueryContext(ctx, "SELECT player_id FROM session_players WHERE session_id = $1", sess.Id)
+		if err != nil {
+			return nil, err
+		}
+		for pRows.Next() {
+			var pID string
+			if err := pRows.Scan(&pID); err != nil {
+				pRows.Close()
+				return nil, err
+			}
+			sess.PlayerIds = append(sess.PlayerIds, pID)
+		}
+		pRows.Close()
+
+		// Decks
+		dRows, err := s.db.QueryContext(ctx, "SELECT deck_id FROM session_decks WHERE session_id = $1", sess.Id)
+		if err != nil {
+			return nil, err
+		}
+		for dRows.Next() {
+			var dID string
+			if err := dRows.Scan(&dID); err != nil {
+				dRows.Close()
+				return nil, err
+			}
+			sess.DeckIds = append(sess.DeckIds, dID)
+		}
+		dRows.Close()
+	}
+
 	return sessions, nil
 }
 
 // Deck operations
 func (s *Storage) CreateDeck(ctx context.Context, deck *pb.Deck) error {
-	con, _ := json.Marshal(deck.Contributors)
-	cids, _ := json.Marshal(deck.CardIds)
-	_, err := s.db.ExecContext(ctx, "INSERT INTO decks (id, name, owner_id, contributors, card_ids) VALUES ($1, $2, $3, $4, $5)", deck.Id, deck.Name, deck.OwnerId, con, cids)
-	return err
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	_, err = tx.ExecContext(ctx, "INSERT INTO decks (id, name, owner_id) VALUES ($1, $2, $3)", deck.Id, deck.Name, deck.OwnerId)
+	if err != nil {
+		return err
+	}
+
+	for _, contributorID := range deck.Contributors {
+		_, err = tx.ExecContext(ctx, "INSERT INTO deck_contributors (deck_id, user_id) VALUES ($1, $2)", deck.Id, contributorID)
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, cardID := range deck.CardIds {
+		_, err = tx.ExecContext(ctx, "INSERT INTO deck_cards (deck_id, card_id) VALUES ($1, $2)", deck.Id, cardID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
 func (s *Storage) GetDeck(ctx context.Context, id string) (*pb.Deck, error) {
-	row := s.db.QueryRowContext(ctx, "SELECT id, name, owner_id, contributors, card_ids FROM decks WHERE id = $1", id)
+	row := s.db.QueryRowContext(ctx, "SELECT id, name, owner_id, created_at, updated_at FROM decks WHERE id = $1", id)
 	var d pb.Deck
-	var con, cids []byte
-	if err := row.Scan(&d.Id, &d.Name, &d.OwnerId, &con, &cids); err != nil {
+	var createdAt sql.NullTime
+	var updatedAt sql.NullTime
+	if err := row.Scan(&d.Id, &d.Name, &d.OwnerId, &createdAt, &updatedAt); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, storage.ErrNotFound
 		}
 		return nil, err
 	}
-	json.Unmarshal(con, &d.Contributors)
-	json.Unmarshal(cids, &d.CardIds)
+	if createdAt.Valid {
+		d.CreatedAt = timestamppb.New(createdAt.Time)
+	}
+	if updatedAt.Valid {
+		d.UpdatedAt = timestamppb.New(updatedAt.Time)
+	}
+
+	// Fetch contributors
+	rows, err := s.db.QueryContext(ctx, "SELECT user_id FROM deck_contributors WHERE deck_id = $1", id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var userID string
+		if err := rows.Scan(&userID); err != nil {
+			return nil, err
+		}
+		d.Contributors = append(d.Contributors, userID)
+	}
+
+	// Fetch cards
+	rows, err = s.db.QueryContext(ctx, "SELECT card_id FROM deck_cards WHERE deck_id = $1", id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var cardID string
+		if err := rows.Scan(&cardID); err != nil {
+			return nil, err
+		}
+		d.CardIds = append(d.CardIds, cardID)
+	}
+
 	return &d, nil
 }
 
 func (s *Storage) UpdateDeck(ctx context.Context, deck *pb.Deck) error {
-	con, _ := json.Marshal(deck.Contributors)
-	cids, _ := json.Marshal(deck.CardIds)
-	res, err := s.db.ExecContext(ctx, "UPDATE decks SET name = $1, owner_id = $2, contributors = $3, card_ids = $4 WHERE id = $5", deck.Name, deck.OwnerId, con, cids, deck.Id)
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
-	rows, _ := res.RowsAffected()
-	if rows == 0 {
+	defer tx.Rollback()
+
+	res, err := tx.ExecContext(ctx, "UPDATE decks SET name = $1, owner_id = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3", deck.Name, deck.OwnerId, deck.Id)
+	if err != nil {
+		return err
+	}
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected == 0 {
 		return storage.ErrNotFound
 	}
-	return nil
+
+	// Update contributors
+	_, err = tx.ExecContext(ctx, "DELETE FROM deck_contributors WHERE deck_id = $1", deck.Id)
+	if err != nil {
+		return err
+	}
+	for _, contributorID := range deck.Contributors {
+		_, err = tx.ExecContext(ctx, "INSERT INTO deck_contributors (deck_id, user_id) VALUES ($1, $2)", deck.Id, contributorID)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Update cards
+	_, err = tx.ExecContext(ctx, "DELETE FROM deck_cards WHERE deck_id = $1", deck.Id)
+	if err != nil {
+		return err
+	}
+	for _, cardID := range deck.CardIds {
+		_, err = tx.ExecContext(ctx, "INSERT INTO deck_cards (deck_id, card_id) VALUES ($1, $2)", deck.Id, cardID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
 func (s *Storage) ListDecks(ctx context.Context) ([]*pb.Deck, error) {
-	rows, err := s.db.QueryContext(ctx, "SELECT id, name, owner_id, contributors, card_ids FROM decks")
+	rows, err := s.db.QueryContext(ctx, "SELECT id, name, owner_id, created_at, updated_at FROM decks")
 	if err != nil {
 		return nil, err
 	}
@@ -255,14 +488,53 @@ func (s *Storage) ListDecks(ctx context.Context) ([]*pb.Deck, error) {
 	var decks []*pb.Deck
 	for rows.Next() {
 		var d pb.Deck
-		var con, cids []byte
-		if err := rows.Scan(&d.Id, &d.Name, &d.OwnerId, &con, &cids); err != nil {
+		var createdAt sql.NullTime
+		var updatedAt sql.NullTime
+		if err := rows.Scan(&d.Id, &d.Name, &d.OwnerId, &createdAt, &updatedAt); err != nil {
 			return nil, err
 		}
-		json.Unmarshal(con, &d.Contributors)
-		json.Unmarshal(cids, &d.CardIds)
+		if createdAt.Valid {
+			d.CreatedAt = timestamppb.New(createdAt.Time)
+		}
+		if updatedAt.Valid {
+			d.UpdatedAt = timestamppb.New(updatedAt.Time)
+		}
 		decks = append(decks, &d)
 	}
+
+	// Fetch relations for each deck
+	for _, d := range decks {
+		// Contributors
+		cRows, err := s.db.QueryContext(ctx, "SELECT user_id FROM deck_contributors WHERE deck_id = $1", d.Id)
+		if err != nil {
+			return nil, err
+		}
+		for cRows.Next() {
+			var userID string
+			if err := cRows.Scan(&userID); err != nil {
+				cRows.Close()
+				return nil, err
+			}
+			d.Contributors = append(d.Contributors, userID)
+		}
+		cRows.Close()
+
+		// Cards
+		cardRows, err := s.db.QueryContext(ctx, "SELECT card_id FROM deck_cards WHERE deck_id = $1", d.Id)
+		if err != nil {
+			return nil, err
+		}
+		for cardRows.Next() {
+			var cardID string
+			if err := cardRows.Scan(&cardID); err != nil {
+				cardRows.Close()
+				return nil, err
+			}
+			d.CardIds = append(d.CardIds, cardID)
+		}
+		cardRows.Close()
+	}
+
 	return decks, nil
 }
 

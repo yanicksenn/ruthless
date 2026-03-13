@@ -38,7 +38,7 @@ func TestDeck_AddRemoveContributor(t *testing.T) {
 
 func TestDeck_AddRemoveCard(t *testing.T) {
 	deck := domain.NewDeck("My Deck", "owner-1")
-	card, err := domain.NewCard("A ___ card.")
+	card, err := domain.NewCard("A ___ card.", "owner-1")
 	require.NoError(t, err)
 
 	// Unauthorized addition

@@ -101,7 +101,7 @@ var gameStatusCmd = &cobra.Command{
 			currentRound := game.Rounds[len(game.Rounds)-1]
 			fmt.Println("\n--- Current Round ---")
 			fmt.Printf("Czar: %s\n", currentRound.CzarId)
-			fmt.Printf("Black Card: %s (Blanks: %d) [%s]\n", currentRound.BlackCard.Text, currentRound.BlackCard.Blanks, currentRound.BlackCard.Id)
+			fmt.Printf("Black Card: %s (Blanks: %d) [%s]\n", currentRound.BlackCard.Text, strings.Count(currentRound.BlackCard.Text, "___"), currentRound.BlackCard.Id)
 			fmt.Println("Plays so far:")
 			for _, play := range currentRound.Plays {
 				cardTexts := []string{}

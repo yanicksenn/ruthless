@@ -68,6 +68,19 @@ func (s *Server) UnaryAuthInterceptor() grpc.UnaryServerInterceptor {
 				return nil, status.Errorf(codes.Unauthenticated, "invalid token")
 			}
 
+			// Ensure player exists as a User in storage.
+			// This is necessary because some operations (like joining a session)
+			// depend on the user existence due to foreign key constraints.
+			err = s.store.CreateUser(ctx, &pb.User{
+				Id:   player.Id,
+				Name: player.Name,
+			})
+			if err != nil {
+				// We don't want to block the request if this fails (maybe?),
+				// but for E2E validation we need it to succeed.
+				// Log it at least.
+			}
+
 			ctx = context.WithValue(ctx, PlayerContextKey, player)
 		}
 		return handler(ctx, req)

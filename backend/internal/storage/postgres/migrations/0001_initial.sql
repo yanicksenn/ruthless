@@ -3,26 +3,52 @@
 CREATE TABLE IF NOT EXISTS cards (
     id TEXT PRIMARY KEY,
     text TEXT NOT NULL,
-    blanks INTEGER NOT NULL
+    color INTEGER NOT NULL,
+    owner_id TEXT,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE
 );
 
 CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
-    name TEXT NOT NULL
+    name TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS decks (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     owner_id TEXT NOT NULL,
-    contributors JSONB NOT NULL DEFAULT '[]',
-    card_ids JSONB NOT NULL DEFAULT '[]'
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE TABLE IF NOT EXISTS deck_contributors (
+    deck_id TEXT NOT NULL REFERENCES decks(id),
+    user_id TEXT NOT NULL REFERENCES users(id),
+    PRIMARY KEY (deck_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS deck_cards (
+    deck_id TEXT NOT NULL REFERENCES decks(id),
+    card_id TEXT NOT NULL REFERENCES cards(id),
+    PRIMARY KEY (deck_id, card_id)
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
-    id TEXT PRIMARY KEY,
-    player_ids JSONB NOT NULL DEFAULT '[]',
-    deck_ids JSONB NOT NULL DEFAULT '[]'
+    id TEXT PRIMARY KEY
+);
+
+CREATE TABLE IF NOT EXISTS session_players (
+    session_id TEXT NOT NULL REFERENCES sessions(id),
+    player_id TEXT NOT NULL REFERENCES users(id),
+    PRIMARY KEY (session_id, player_id)
+);
+
+CREATE TABLE IF NOT EXISTS session_decks (
+    session_id TEXT NOT NULL REFERENCES sessions(id),
+    deck_id TEXT NOT NULL REFERENCES decks(id),
+    PRIMARY KEY (session_id, deck_id)
 );
 
 CREATE TABLE IF NOT EXISTS games (

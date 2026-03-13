@@ -20,7 +20,12 @@ func (s *Server) ListCards(ctx context.Context, req *pb.ListCardsRequest) (*pb.L
 }
 
 func (s *Server) CreateCard(ctx context.Context, req *pb.CreateCardRequest) (*pb.Card, error) {
-	card, err := domain.NewCard(req.Text)
+	ownerID := ""
+	if p, ok := getPlayer(ctx); ok {
+		ownerID = p.Id
+	}
+
+	card, err := domain.NewCard(req.Text, ownerID)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}

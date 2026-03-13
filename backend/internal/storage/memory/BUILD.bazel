@@ -8,6 +8,7 @@ go_library(
     deps = [
         "//api/v1:ruthlespb_go_proto",
         "//backend/internal/storage",
+        "@org_golang_google_protobuf//types/known/timestamppb",
     ],
 )
 

@@ -46,7 +46,7 @@ func StartGame(game *pb.Game, session *pb.Session, allCards map[string]*pb.Card,
 			if !ok {
 				continue
 			}
-			if card.Blanks > 0 {
+			if card.Color == pb.CardColor_CARD_COLOR_BLACK {
 				game.HiddenBlackDeck = append(game.HiddenBlackDeck, card)
 			} else {
 				game.HiddenWhiteDeck = append(game.HiddenWhiteDeck, card)
@@ -104,7 +104,7 @@ func startNewRound(game *pb.Game, playerIDs []string) {
 		Id:        uuid.New().String(),
 		CzarId:    czar,
 		BlackCard: bc,
-		Plays:     make([]*pb.Play, 0),
+		Plays:     make(map[string]*pb.Play),
 	}
 	game.Rounds = append(game.Rounds, round)
 	game.State = pb.GameState_GAME_STATE_PLAYING
@@ -120,15 +120,13 @@ func PlayCards(game *pb.Game, playerID string, cardIDs []string) (*pb.Play, erro
 		return nil, ErrCzarCannotPlay
 	}
 
-	if len(cardIDs) != int(currentRound.BlackCard.Blanks) {
+	if len(cardIDs) != CountBlanks(currentRound.BlackCard.Text) {
 		return nil, ErrInvalidNumberOfCards
 	}
 
 	// Check if already played
-	for _, p := range currentRound.Plays {
-		if p.PlayerId == playerID {
-			return nil, ErrInvalidState // already played
-		}
+	if _, ok := currentRound.Plays[playerID]; ok {
+		return nil, ErrInvalidState // already played
 	}
 
 	hand, ok := game.HiddenHands[playerID]
@@ -178,7 +176,10 @@ func PlayCards(game *pb.Game, playerID string, cardIDs []string) (*pb.Play, erro
 		Cards:    playedCards,
 	}
 
-	currentRound.Plays = append(currentRound.Plays, play)
+	if currentRound.Plays == nil {
+		currentRound.Plays = make(map[string]*pb.Play)
+	}
+	currentRound.Plays[playerID] = play
 
 	// Check if all players (except czar) have played
 	expectedPlays := len(game.Scores) - 1

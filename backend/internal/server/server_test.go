@@ -48,7 +48,7 @@ func TestServer_AddCardToDeck(t *testing.T) {
 	err := store.CreateDeck(context.Background(), deck)
 	require.NoError(t, err)
 
-	card := &pb.Card{Id: "card123", Text: "A ___ card."}
+	card := &pb.Card{Id: "card123", Text: "A ___ card.", Color: pb.CardColor_CARD_COLOR_BLACK}
 	err = store.CreateCard(context.Background(), card)
 	require.NoError(t, err)
 
@@ -77,19 +77,25 @@ func TestServer_JoinSession(t *testing.T) {
 	err := store.CreateSession(context.Background(), session)
 	require.NoError(t, err)
 
+	player := domain.NewPlayer("Alice")
+	err = store.CreateUser(context.Background(), &pb.User{Id: player.Id, Name: player.Name})
+	require.NoError(t, err)
+
+	ctx := context.WithValue(context.Background(), server.PlayerContextKey, player)
+
 	req := &pb.JoinSessionRequest{
 		SessionId:  session.Id,
 		PlayerName: "Alice",
 	}
 
-	resp, err := srv.JoinSession(context.Background(), req)
+	resp, err := srv.JoinSession(ctx, req)
 	require.NoError(t, err)
 	assert.Equal(t, session.Id, resp.Id)
 	assert.Len(t, resp.PlayerIds, 1)
 
 	// Verify player was created in storage
 	playerID := resp.PlayerIds[0]
-	player, err := store.GetUser(context.Background(), playerID)
+	retrievedUser, err := store.GetUser(context.Background(), playerID)
 	require.NoError(t, err)
-	assert.Equal(t, "Alice", player.Name)
+	assert.Equal(t, "Alice", retrievedUser.Name)
 }

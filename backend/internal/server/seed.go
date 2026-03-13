@@ -9,6 +9,7 @@ import (
 
 	pb "github.com/yanicksenn/ruthless/api/v1"
 	"github.com/yanicksenn/ruthless/backend/internal/storage"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type SeedData struct {
@@ -31,14 +32,24 @@ func LoadSeed(ctx context.Context, store storage.Storage, filePath string) error
 	}
 
 	for _, u := range seed.Users {
+		if u.CreatedAt == nil {
+			u.CreatedAt = timestamppb.Now()
+		}
 		if err := store.CreateUser(ctx, u); err != nil {
 			return fmt.Errorf("failed to seed user %s: %w", u.Id, err)
 		}
 	}
 
 	for _, c := range seed.Cards {
-		if c.Blanks == 0 && strings.Contains(c.Text, "___") {
-			c.Blanks = uint32(strings.Count(c.Text, "___"))
+		if c.Color == pb.CardColor_CARD_COLOR_UNSPECIFIED {
+			if strings.Contains(c.Text, "___") {
+				c.Color = pb.CardColor_CARD_COLOR_BLACK
+			} else {
+				c.Color = pb.CardColor_CARD_COLOR_WHITE
+			}
+		}
+		if c.CreatedAt == nil {
+			c.CreatedAt = timestamppb.Now()
 		}
 		if err := store.CreateCard(ctx, c); err != nil {
 			return fmt.Errorf("failed to seed card %s: %w", c.Id, err)
@@ -46,6 +57,9 @@ func LoadSeed(ctx context.Context, store storage.Storage, filePath string) error
 	}
 
 	for _, d := range seed.Decks {
+		if d.CreatedAt == nil {
+			d.CreatedAt = timestamppb.Now()
+		}
 		if err := store.CreateDeck(ctx, d); err != nil {
 			return fmt.Errorf("failed to seed deck %s: %w", d.Id, err)
 		}

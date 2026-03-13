@@ -19,10 +19,11 @@ func TestPlayCards_Validation(t *testing.T) {
 				Id:     "round-1",
 				CzarId: "Czar",
 				BlackCard: &pb.Card{
-					Id:     "black-1",
-					Text:   "___ and ___",
-					Blanks: 2,
+					Id:    "black-1",
+					Text:  "___ and ___",
+					Color: pb.CardColor_CARD_COLOR_BLACK,
 				},
+				Plays: make(map[string]*pb.Play),
 			},
 		},
 		HiddenHands: map[string]*pb.PlayerHand{

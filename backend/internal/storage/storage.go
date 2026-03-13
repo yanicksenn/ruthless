@@ -19,6 +19,7 @@ type Storage interface {
 
 	// User operations
 	CreateUser(ctx context.Context, user *pb.User) error
+	GetUser(ctx context.Context, id string) (*pb.User, error)
 
 	// Session operations
 	CreateSession(ctx context.Context, session *pb.Session) error

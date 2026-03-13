@@ -20,159 +20,198 @@
   "cards": [
     {
       "id": "black-1",
-      "text": "A big black ___"
+      "text": "A big black ___",
+      "color": 1
     },
     {
       "id": "black-2",
-      "text": "The feeling of being watched by a ___"
+      "text": "The feeling of being watched by a ___",
+      "color": 1
     },
     {
       "id": "black-3",
-      "text": "What's the next superhero's secret weapon? ___"
+      "text": "What's the next superhero's secret weapon? ___",
+      "color": 1
     },
     {
       "id": "black-4",
-      "text": "In the new M. Night Shyamalan movie, it's revealed that ___ was actually ___ all along."
+      "text": "In the new M. Night Shyamalan movie, it's revealed that ___ was actually ___ all along.",
+      "color": 1
     },
     {
       "id": "white-1",
-      "text": "White card 1"
+      "text": "White card 1",
+      "color": 2
     },
     {
       "id": "white-2",
-      "text": "White card 2"
+      "text": "White card 2",
+      "color": 2
     },
     {
       "id": "white-3",
-      "text": "White card 3"
+      "text": "White card 3",
+      "color": 2
     },
     {
       "id": "white-4",
-      "text": "A middle-aged man on roller skates."
+      "text": "A middle-aged man on roller skates.",
+      "color": 2
     },
     {
       "id": "white-5",
-      "text": "The profound silence of the tomb."
+      "text": "The profound silence of the tomb.",
+      "color": 2
     },
     {
       "id": "white-6",
-      "text": "Being a motherfucking sorcerer."
+      "text": "Being a motherfucking sorcerer.",
+      "color": 2
     },
     {
       "id": "white-7",
-      "text": "A sausage festival."
+      "text": "A sausage festival.",
+      "color": 2
     },
     {
       "id": "white-8",
-      "text": "The quiet majesty of the nature."
+      "text": "The quiet majesty of the nature.",
+      "color": 2
     },
     {
       "id": "white-9",
-      "text": "A PowerPoint presentation on global warming."
+      "text": "A PowerPoint presentation on global warming.",
+      "color": 2
     },
     {
       "id": "white-10",
-      "text": "An oversized foam finger."
+      "text": "An oversized foam finger.",
+      "color": 2
     },
     {
       "id": "white-11",
-      "text": "The inevitable heat death of the universe."
+      "text": "The inevitable heat death of the universe.",
+      "color": 2
     },
     {
       "id": "white-12",
-      "text": "A tiny, screaming goat."
+      "text": "A tiny, screaming goat.",
+      "color": 2
     },
     {
       "id": "white-13",
-      "text": "The ghost of Christmas past."
+      "text": "The ghost of Christmas past.",
+      "color": 2
     },
     {
       "id": "white-14",
-      "text": "A suspicious-looking cupcake."
+      "text": "A suspicious-looking cupcake.",
+      "color": 2
     },
     {
       "id": "white-15",
-      "text": "The collective unconscious."
+      "text": "The collective unconscious.",
+      "color": 2
     },
     {
       "id": "white-16",
-      "text": "A lukewarm bowl of oatmeal."
+      "text": "A lukewarm bowl of oatmeal.",
+      "color": 2
     },
     {
       "id": "white-17",
-      "text": "The art of the deal."
+      "text": "The art of the deal.",
+      "color": 2
     },
     {
       "id": "white-18",
-      "text": "A sentient pile of laundry."
+      "text": "A sentient pile of laundry.",
+      "color": 2
     },
     {
       "id": "white-19",
-      "text": "The subtle art of not giving a f*ck."
+      "text": "The subtle art of not giving a f*ck.",
+      "color": 2
     },
     {
       "id": "white-20",
-      "text": "A bag of frozen peas."
+      "text": "A bag of frozen peas.",
+      "color": 2
     },
     {
       "id": "white-21",
-      "text": "The thrill of the hunt."
+      "text": "The thrill of the hunt.",
+      "color": 2
     },
     {
       "id": "white-22",
-      "text": "A vintage typewriter that only types in wingdings."
+      "text": "A vintage typewriter that only types in wingdings.",
+      "color": 2
     },
     {
       "id": "white-23",
-      "text": "The scent of a new car."
+      "text": "The scent of a new car.",
+      "color": 2
     },
     {
       "id": "white-24",
-      "text": "A slightly damp handshake."
+      "text": "A slightly damp handshake.",
+      "color": 2
     },
     {
       "id": "white-25",
-      "text": "The mystery of the missing sock."
+      "text": "The mystery of the missing sock.",
+      "color": 2
     },
     {
       "id": "white-26",
-      "text": "A very small hat for a very large dog."
+      "text": "A very small hat for a very large dog.",
+      "color": 2
     },
     {
       "id": "white-27",
-      "text": "The sound of one hand clapping."
+      "text": "The sound of one hand clapping.",
+      "color": 2
     },
     {
       "id": "white-28",
-      "text": "A jar of artisanal pickles."
+      "text": "A jar of artisanal pickles.",
+      "color": 2
     },
     {
       "id": "white-29",
-      "text": "The feeling of cold sand between your toes."
+      "text": "The feeling of cold sand between your toes.",
+      "color": 2
     },
     {
       "id": "white-30",
-      "text": "A disco ball made of real eyes."
+      "text": "A disco ball made of real eyes.",
+      "color": 2
     },
     {
       "id": "white-31",
-      "text": "The taste of a copper penny."
+      "text": "The taste of a copper penny.",
+      "color": 2
     },
     {
       "id": "white-32",
-      "text": "A mime having a heart attack."
+      "text": "A mime having a heart attack.",
+      "color": 2
     },
     {
       "id": "white-33",
-      "text": "The silence that follows a bad joke."
+      "text": "The silence that follows a bad joke.",
+      "color": 2
     },
     {
       "id": "white-34",
-      "text": "A cloud that looks like a middle finger."
+      "text": "A cloud that looks like a middle finger.",
+      "color": 2
     },
     {
       "id": "white-35",
-      "text": "The existential dread of a Sunday afternoon."
+      "text": "The existential dread of a Sunday afternoon.",
+      "color": 2
     }
   ],
   "decks": [

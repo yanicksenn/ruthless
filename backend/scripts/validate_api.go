@@ -38,7 +38,7 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	fmt.Println("--- Starting E2E Validation ---")
+	fmt.Print("--- Starting E2E Validation ---\r\n")
 
 	signToken := func(name string) string {
 		if *authSecret == "" {
@@ -56,7 +56,7 @@ func main() {
 	}
 
 	// 1. Create some cards
-	fmt.Println("1. Creating cards...")
+	fmt.Print("1. Creating cards...\r\n")
 	blackCards := make([]*pb.Card, 10)
 	for i := 0; i < 10; i++ {
 		bc, err := cardClient.CreateCard(ctx, &pb.CreateCardRequest{Text: fmt.Sprintf("Black Card %d with blank ___", i)})
@@ -65,7 +65,7 @@ func main() {
 		}
 		blackCards[i] = bc
 	}
-	fmt.Println("   Created 10 black cards.")
+	fmt.Print("   Created 10 black cards.\r\n")
 
 	whiteCards := make([]*pb.Card, 100)
 	for i := 0; i < 100; i++ {
@@ -75,19 +75,19 @@ func main() {
 		}
 		whiteCards[i] = wc
 	}
-	fmt.Println("   Created 100 white cards.")
+	fmt.Print("   Created 100 white cards.\r\n")
 
 	// 2. Create a deck
-	fmt.Println("2. Creating deck...")
+	fmt.Print("2. Creating deck...\r\n")
 	aliceCtx := metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+signToken("Alice"))
 	deck, err := deckClient.CreateDeck(aliceCtx, &pb.CreateDeckRequest{Name: "E2E Test Deck"})
 	if err != nil {
 		log.Fatalf("could not create deck: %v", err)
 	}
-	fmt.Printf("   Created deck: %s\n", deck.Id)
+	fmt.Printf("   Created deck: %s\r\n", deck.Id)
 
 	// 3. Add cards to deck
-	fmt.Println("3. Adding cards to deck...")
+	fmt.Print("3. Adding cards to deck...\r\n")
 	for _, bc := range blackCards {
 		_, err = deckClient.AddCardToDeck(aliceCtx, &pb.AddCardToDeckRequest{DeckId: deck.Id, CardId: bc.Id})
 		if err != nil {
@@ -102,12 +102,12 @@ func main() {
 	}
 
 	// 4. Create session and join
-	fmt.Println("4. Setting up session...")
+	fmt.Print("4. Setting up session...\r\n")
 	session, err := sessionClient.CreateSession(ctx, &pb.CreateSessionRequest{})
 	if err != nil {
 		log.Fatalf("could not create session: %v", err)
 	}
-	fmt.Printf("   Created session: %s\n", session.Id)
+	fmt.Printf("   Created session: %s\r\n", session.Id)
 
 	_, err = sessionClient.AddDeckToSession(ctx, &pb.AddDeckToSessionRequest{SessionId: session.Id, DeckId: deck.Id})
 	if err != nil {
@@ -124,21 +124,21 @@ func main() {
 		}
 		playerContexts[token] = pCtx
 	}
-	fmt.Println("   Three players joined.")
+	fmt.Print("   Three players joined.\r\n")
 
 	// 5. Create and start game
-	fmt.Println("5. Starting game...")
+	fmt.Print("5. Starting game...\r\n")
 	session, err = sessionClient.GetSession(ctx, &pb.GetSessionRequest{Id: session.Id})
 	if err != nil {
 		log.Fatalf("could not get session: %v", err)
 	}
-	fmt.Printf("   Session players: %v\n", session.PlayerIds)
+	fmt.Printf("   Session players: %v\r\n", session.PlayerIds)
 
 	game, err := gameClient.CreateGame(ctx, &pb.CreateGameRequest{SessionId: session.Id})
 	if err != nil {
 		log.Fatalf("could not create game: %v", err)
 	}
-	fmt.Printf("   Created game: %s\n", game.Id)
+	fmt.Printf("   Created game: %s\r\n", game.Id)
 
 	_, err = gameClient.StartGame(aliceCtx, &pb.StartGameRequest{Id: game.Id})
 	if err != nil {
@@ -152,10 +152,10 @@ func main() {
 	}
 	currentRound := game.Rounds[len(game.Rounds)-1]
 	czarID := currentRound.CzarId
-	fmt.Printf("   Czar for this round: %s\n", czarID)
+	fmt.Printf("   Czar for this round: %s\r\n", czarID)
 
 	// 6. Non-czars play cards
-	fmt.Println("6. Non-czars playing cards...")
+	fmt.Print("6. Non-czars playing cards...\r\n")
 	var lastPlayID string
 	for _, token := range playerTokens {
 		// In fake auth, ID == Token
@@ -178,12 +178,12 @@ func main() {
 		if err != nil {
 			log.Fatalf("%s could not play card: %v", token, err)
 		}
-		fmt.Printf("   %s played a card: %s\n", token, playResp.PlayId)
+		fmt.Printf("   %s played a card: %s\r\n", token, playResp.PlayId)
 		lastPlayID = playResp.PlayId
 	}
 
 	// 7. Judge
-	fmt.Println("7. Judging...")
+	fmt.Print("7. Judging...\r\n")
 	czarCtx := playerContexts[czarID]
 	_, err = gameClient.SelectWinner(czarCtx, &pb.SelectWinnerRequest{
 		GameId: game.Id,
@@ -192,10 +192,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("Judging failed: %v", err)
 	}
-	fmt.Println("   Judging successful!")
+	fmt.Print("   Judging successful!\r\n")
 
 	// 8. Verify persistence / Round transition
-	fmt.Println("8. Verifying round transition...")
+	fmt.Print("8. Verifying round transition...\r\n")
 	game, err = gameClient.GetGame(ctx, &pb.GetGameRequest{Id: game.Id})
 	if err != nil {
 		log.Fatalf("could not get game state: %v", err)
@@ -203,7 +203,7 @@ func main() {
 	if len(game.Rounds) != 2 {
 		log.Fatalf("expected 2 rounds, got %d", len(game.Rounds))
 	}
-	fmt.Println("   Successfully transitioned to Round 2.")
+	fmt.Print("   Successfully transitioned to Round 2.\r\n")
 
-	fmt.Println("--- E2E Validation Successful! ---")
+	fmt.Print("--- E2E Validation Successful! ---\r\n")
 }
