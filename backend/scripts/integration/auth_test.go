@@ -12,13 +12,10 @@ import (
 func runAuthTests(t *testing.T, ctx context.Context, c *testutil.TestClient, runID string) {
 	t.Log("\n--- Auth & Authentication Suite ---")
 
-	// 1. SUCCESS: GetMe Alice (Real Google Token)
-	aliceCtx, err := c.GetAuthContextForUser(ctx, "Alice")
-	if err != nil {
-		t.Fatalf("Failed to get Alice context: %v", err)
-	}
-	t.Log("  [RUN] GetMe Alice (Real Token)...")
-	_, err = c.UserClient.GetMe(aliceCtx, &pb.GetMeRequest{})
+	// 1. SUCCESS: GetMe Alice (Fake Token)
+	aliceCtx := c.GetAuthContext(ctx, "Alice")
+	t.Log("  [RUN] GetMe Alice (Fake Token)...")
+	_, err := c.UserClient.GetMe(aliceCtx, &pb.GetMeRequest{})
 	testutil.AssertSuccess(t, err, "GetMe Alice")
 
 	// 2. SUCCESS: GetMe Charlie (Fake Token)

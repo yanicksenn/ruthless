@@ -15,7 +15,7 @@ type Storage interface {
 	// Card operations
 	CreateCard(ctx context.Context, card *pb.Card) error
 	GetCard(ctx context.Context, id string) (*pb.Card, error)
-	ListCards(ctx context.Context, pageSize, pageNumber int32) ([]*pb.Card, int32, error)
+	ListCards(ctx context.Context, pageSize, pageNumber int32, ids []string) ([]*pb.Card, int32, error)
 	DeleteCard(ctx context.Context, id string) error
 
 	// User operations

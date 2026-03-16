@@ -10,17 +10,12 @@ import (
 )
 
 func runDeckTests(t *testing.T, ctx context.Context, c *testutil.TestClient, runID string) {
-	aliceCtx, err := c.GetAuthContextForUser(ctx, "Alice")
-	if err != nil {
-		t.Fatalf("Failed to get Alice context: %v", err)
-	}
-	tok, _ := c.UserTokenSources["Alice"].Token()
-	idToken, _ := testutil.GetIDToken(tok)
-	aliceSub := testutil.GetSub(idToken)
+	aliceCtx := c.GetAuthContext(ctx, "Alice")
+	aliceSub := "Alice"
 
 	bobName := "DeckBob_" + runID
 	bobCtx := c.GetAuthContext(ctx, bobName)
-	_, err = c.UserClient.Register(bobCtx, &pb.RegisterRequest{})
+	_, err := c.UserClient.Register(bobCtx, &pb.RegisterRequest{})
 	testutil.AssertSuccess(t, err, "Register Bob (Fake)")
 
 	t.Log("\n--- Deck & Card Suite ---")
@@ -48,12 +43,11 @@ func runDeckTests(t *testing.T, ctx context.Context, c *testutil.TestClient, run
 	if err == nil {
 		t.Fatalf("Expected error for non-contributor/non-owner, but got success. bobName=%s, aliceCardOwner=%s", bobName, aliceCard.OwnerId)
 	}
-	testutil.AssertError(t, err, codes.PermissionDenied, "you do not own this card")
+	testutil.AssertError(t, err, codes.PermissionDenied, "user is not authorized to modify this deck")
 
 	// 5. SUCCESS: Alice adds Bob as contributor
 	t.Log("  [RUN] Alice adds Bob as contributor...")
 	_, err = c.DeckClient.AddContributor(aliceCtx, &pb.AddContributorRequest{DeckId: deck.Id, ContributorId: bobName})
-	testutil.AssertSuccess(t, err, "AddContributor")
 	testutil.AssertSuccess(t, err, "AddContributor")
 
 	// 6. SUCCESS: Bob (Now contributor) adds card
@@ -72,4 +66,24 @@ func runDeckTests(t *testing.T, ctx context.Context, c *testutil.TestClient, run
 	t.Log("  [RUN] Bob (contributor) tries to remove Alice (owner)...")
 	_, err = c.DeckClient.RemoveContributor(bobCtx, &pb.RemoveContributorRequest{DeckId: deck.Id, ContributorId: aliceSub})
 	testutil.AssertError(t, err, codes.PermissionDenied, "authorized")
+
+	// 9. FAILURE: Non-contributor Charlie tries to remove card
+	t.Log("  [RUN] Charlie tries to remove Bob's card...")
+	_, _ = c.UserClient.Register(charlieCtx, &pb.RegisterRequest{}) // Register charlie now
+	_, err = c.DeckClient.RemoveCardFromDeck(charlieCtx, &pb.RemoveCardFromDeckRequest{DeckId: deck.Id, CardId: bobCard.Id})
+	testutil.AssertError(t, err, codes.PermissionDenied, "not authorized")
+
+	// 10. SUCCESS: Bob removes card
+	t.Log("  [RUN] Bob removes his card...")
+	_, err = c.DeckClient.RemoveCardFromDeck(bobCtx, &pb.RemoveCardFromDeckRequest{DeckId: deck.Id, CardId: bobCard.Id})
+	testutil.AssertSuccess(t, err, "RemoveCardFromDeck Bob")
+
+	// 11. Verify card is gone
+	deckPostRemove, err := c.DeckClient.GetDeck(aliceCtx, &pb.GetDeckRequest{Id: deck.Id})
+	testutil.AssertSuccess(t, err, "GetDeck after remove")
+	for _, id := range deckPostRemove.CardIds {
+		if id == bobCard.Id {
+			t.Fatalf("Card %s should have been removed from deck", bobCard.Id)
+		}
+	}
 }

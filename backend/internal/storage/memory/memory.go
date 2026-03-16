@@ -70,28 +70,41 @@ func (s *Storage) GetCard(ctx context.Context, id string) (*pb.Card, error) {
 	return card, nil
 }
 
-func (s *Storage) ListCards(ctx context.Context, pageSize, pageNumber int32) ([]*pb.Card, int32, error) {
+func (s *Storage) ListCards(ctx context.Context, pageSize, pageNumber int32, ids []string) ([]*pb.Card, int32, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	totalCount := int32(len(s.cards))
-	allCards := make([]*pb.Card, 0, totalCount)
-	for _, c := range s.cards {
-		allCards = append(allCards, c)
+	var filteredCards []*pb.Card
+	if len(ids) > 0 {
+		idMap := make(map[string]bool)
+		for _, id := range ids {
+			idMap[id] = true
+		}
+		for _, c := range s.cards {
+			if idMap[c.Id] {
+				filteredCards = append(filteredCards, c)
+			}
+		}
+	} else {
+		for _, c := range s.cards {
+			filteredCards = append(filteredCards, c)
+		}
 	}
 
+	totalCount := int32(len(filteredCards))
+
 	// Simple sort to ensure stable pagination for memory storage
-	sort.Slice(allCards, func(i, j int) bool {
-		return allCards[i].Id < allCards[j].Id
+	sort.Slice(filteredCards, func(i, j int) bool {
+		return filteredCards[i].Id < filteredCards[j].Id
 	})
 
 	if pageSize <= 0 {
-		return allCards, totalCount, nil
+		return filteredCards, totalCount, nil
 	}
 
 	start := (pageNumber - 1) * pageSize
 	if start >= totalCount {
-		return nil, totalCount, nil
+		return []*pb.Card{}, totalCount, nil
 	}
 
 	end := start + pageSize
@@ -99,7 +112,7 @@ func (s *Storage) ListCards(ctx context.Context, pageSize, pageNumber int32) ([]
 		end = totalCount
 	}
 
-	return allCards[start:end], totalCount, nil
+	return filteredCards[start:end], totalCount, nil
 }
 
 func (s *Storage) DeleteCard(ctx context.Context, id string) error {

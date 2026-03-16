@@ -17,7 +17,7 @@ export const Cards: React.FC = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const cardsRes = await cardClient.listCards({ pageSize, pageNumber }, createOptions(token));
+      const cardsRes = await cardClient.listCards({ pageSize, pageNumber, ids: [] }, createOptions(token));
       setCards(cardsRes.response.cards || []);
       setTotalCount(cardsRes.response.totalCount);
     } catch (err) {

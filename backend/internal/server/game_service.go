@@ -33,7 +33,7 @@ func (s *Server) CreateGame(ctx context.Context, req *pb.CreateGameRequest) (*pb
 	}
 
 	// Denormalize cards/decks
-	cards, _, err := s.store.ListCards(ctx, 0, 0)
+	cards, _, err := s.store.ListCards(ctx, 0, 0, nil)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to fetch cards")
 	}

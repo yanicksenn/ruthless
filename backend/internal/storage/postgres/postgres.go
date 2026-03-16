@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	_ "github.com/lib/pq"
@@ -137,21 +138,37 @@ func (s *Storage) GetCard(ctx context.Context, id string) (*pb.Card, error) {
 	return &c, nil
 }
 
-func (s *Storage) ListCards(ctx context.Context, pageSize, pageNumber int32) ([]*pb.Card, int32, error) {
+func (s *Storage) ListCards(ctx context.Context, pageSize, pageNumber int32, ids []string) ([]*pb.Card, int32, error) {
 	var totalCount int32
-	err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM cards").Scan(&totalCount)
+	countQuery := "SELECT COUNT(*) FROM cards"
+	dataQuery := "SELECT id, text, color, owner_id, created_at, updated_at FROM cards"
+	var args []interface{}
+	argId := 1
+
+	if len(ids) > 0 {
+		placeholders := make([]string, len(ids))
+		for i, id := range ids {
+			placeholders[i] = "$" + strconv.Itoa(argId)
+			args = append(args, id)
+			argId++
+		}
+		whereClause := " WHERE id IN (" + strings.Join(placeholders, ", ") + ")"
+		countQuery += whereClause
+		dataQuery += whereClause
+	}
+
+	err := s.db.QueryRowContext(ctx, countQuery, args...).Scan(&totalCount)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	query := "SELECT id, text, color, owner_id, created_at, updated_at FROM cards ORDER BY id"
-	var args []interface{}
+	dataQuery += " ORDER BY id"
 	if pageSize > 0 {
-		query += " LIMIT $1 OFFSET $2"
+		dataQuery += " LIMIT $" + strconv.Itoa(argId) + " OFFSET $" + strconv.Itoa(argId+1)
 		args = append(args, pageSize, (pageNumber-1)*pageSize)
 	}
 
-	rows, err := s.db.QueryContext(ctx, query, args...)
+	rows, err := s.db.QueryContext(ctx, dataQuery, args...)
 	if err != nil {
 		return nil, 0, err
 	}

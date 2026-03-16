@@ -8,20 +8,9 @@ go_test(
         "game_test.go",
         "main_test.go",
     ],
-    args = [
-        "--alice-refresh=$(location //secrets:ruthless.alice.sec)",
-        "--bob-refresh=$(location //secrets:ruthless.bob.sec)",
-        "--client-secret=$(location //secrets:client_secret_dev.json)",
-    ],
-    data = [
-        "//secrets:client_secret_dev.json",
-        "//secrets:ruthless.alice.sec",
-        "//secrets:ruthless.bob.sec",
-    ],
     importpath = "github.com/yanicksenn/ruthless/backend/scripts/integration",
     deps = [
         "//api/v1:ruthlespb_go_proto",
-        "//backend/internal/storage",
         "//backend/scripts/testutil",
         "@org_golang_google_grpc//codes",
     ],

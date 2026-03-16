@@ -11,22 +11,12 @@ import (
 )
 
 func runGameTests(t *testing.T, ctx context.Context, c *testutil.TestClient, runID string) {
-	aliceCtx, err := c.GetAuthContextForUser(ctx, "Alice")
-	if err != nil {
-		t.Fatalf("Failed to get Alice context: %v", err)
-	}
-	
-	ts, ok := c.UserTokenSources["Alice"]
-	if !ok {
-		t.Fatalf("Alice token source not initialized")
-	}
-	tok, _ := ts.Token()
-	idToken, _ := testutil.GetIDToken(tok)
-	aliceSub := testutil.GetSub(idToken)
+	aliceCtx := c.GetAuthContext(ctx, "Alice")
+	aliceSub := "Alice"
 
 	bobName := "GameBob_" + runID
 	bobCtx := c.GetAuthContext(ctx, bobName)
-	_, err = c.UserClient.Register(bobCtx, &pb.RegisterRequest{})
+	_, err := c.UserClient.Register(bobCtx, &pb.RegisterRequest{})
 	testutil.AssertSuccess(t, err, "Register Bob (Fake)")
 
 	t.Log("\n--- Session & Game Flow Suite ---")

@@ -32,7 +32,7 @@ func TestMemoryStorage_Cards(t *testing.T) {
 		t.Errorf("Retrieved card does not match original")
 	}
 
-	list, total, err := store.ListCards(ctx, 0, 0)
+	list, total, err := store.ListCards(ctx, 0, 0, nil)
 	if err != nil {
 		t.Fatalf("Failed to list cards: %v", err)
 	}
@@ -47,17 +47,17 @@ func TestMemoryStorage_Cards(t *testing.T) {
 		_ = store.CreateCard(ctx, c)
 	}
 
-	list, total, err = store.ListCards(ctx, 2, 1) // First page
+	list, total, err = store.ListCards(ctx, 2, 1, nil) // First page
 	if err != nil || len(list) != 2 || total != 6 {
 		t.Errorf("Page 1 failed: got %d cards, total %d, err %v", len(list), total, err)
 	}
 
-	list, total, err = store.ListCards(ctx, 2, 2) // Second page
+	list, total, err = store.ListCards(ctx, 2, 2, nil) // Second page
 	if err != nil || len(list) != 2 || total != 6 {
 		t.Errorf("Page 2 failed: got %d cards, total %d, err %v", len(list), total, err)
 	}
 
-	list, total, err = store.ListCards(ctx, 2, 4) // Out of bounds
+	list, total, err = store.ListCards(ctx, 2, 4, nil) // Out of bounds
 	if err != nil || len(list) != 0 || total != 6 {
 		t.Errorf("Out of bounds failed: got %d cards, total %d, err %v", len(list), total, err)
 	}

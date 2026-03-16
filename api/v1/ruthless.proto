@@ -95,6 +95,7 @@ message Game {
 message ListCardsRequest {
   int32 page_size = 1;
   int32 page_number = 2;
+  repeated string ids = 3;
 }
 message ListCardsResponse {
   repeated Card cards = 1;

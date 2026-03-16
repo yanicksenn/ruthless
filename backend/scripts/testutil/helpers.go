@@ -62,18 +62,22 @@ func (c *TestClient) Close() {
 
 func StartTestServer(ctx context.Context, googleAudience string) (string, storage.Storage, func(), error) {
 	store := memory.New()
-	authenticator, err := ruthlessjwt.NewGoogle(ctx, googleAudience)
-	if err != nil {
-		return "", nil, nil, fmt.Errorf("failed to init google auth: %v", err)
+	
+	var authenticator ruthlessauth.Authenticator
+	if googleAudience != "" {
+		googleAuth, err := ruthlessjwt.NewGoogle(ctx, googleAudience)
+		if err != nil {
+			return "", nil, nil, fmt.Errorf("failed to init google auth: %v", err)
+		}
+		authenticator = &flexibleAuthenticator{
+			google: googleAuth,
+			fake:   fake.New(),
+		}
+	} else {
+		authenticator = fake.New()
 	}
 
-	// Use a flexible authenticator that supports both Google and Fake auth for testing
-	flexibleAuth := &flexibleAuthenticator{
-		google: authenticator,
-		fake:   fake.New(),
-	}
-
-	srv := server.New(store, flexibleAuth, &pb.Config{})
+	srv := server.New(store, authenticator, &pb.Config{})
 	listener, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
 		return "", nil, nil, fmt.Errorf("failed to listen: %v", err)
@@ -97,6 +101,21 @@ func StartTestServer(ctx context.Context, googleAudience string) (string, storag
 	}
 
 	return addr, store, cleanup, nil
+}
+
+type flexibleAuthenticator struct {
+	google ruthlessauth.Authenticator
+	fake   ruthlessauth.Authenticator
+}
+
+func (a *flexibleAuthenticator) Authenticate(ctx context.Context, token string) (*pb.Player, error) {
+	// Try Google first
+	p, err := a.google.Authenticate(ctx, token)
+	if err == nil {
+		return p, nil
+	}
+	// Fallback to Fake
+	return a.fake.Authenticate(ctx, token)
 }
 
 func (c *TestClient) GetAuthContextForUser(ctx context.Context, name string) (context.Context, error) {
@@ -163,21 +182,6 @@ func (c *TestClient) EnsureUserRegistered(ctx context.Context, name string, stor
 	return sub, nil
 }
 
-type flexibleAuthenticator struct {
-	google ruthlessauth.Authenticator
-	fake   ruthlessauth.Authenticator
-}
-
-func (a *flexibleAuthenticator) Authenticate(ctx context.Context, token string) (*pb.Player, error) {
-	// Try Google first
-	p, err := a.google.Authenticate(ctx, token)
-	if err == nil {
-		return p, nil
-	}
-	// Fallback to Fake
-	return a.fake.Authenticate(ctx, token)
-}
-
 func (c *TestClient) GetAuthContext(ctx context.Context, name string) context.Context {
 	token := c.signToken(name)
 	return metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+token)
@@ -201,6 +205,7 @@ func (c *TestClient) signToken(name string) string {
 	}
 	return signed
 }
+
 
 func AssertError(t testing.TB, err error, code codes.Code, msgContains string) {
 	t.Helper()

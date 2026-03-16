@@ -4,12 +4,14 @@ import { Plus, Library as LibraryIcon, ChevronRight, Hash, LogOut } from 'lucide
 import { deckClient, createOptions } from '../api/client';
 import { Deck } from '../api/ruthless';
 import { CreationDialog } from './CreationDialog';
+import { DeckEditor } from './DeckEditor';
 
 export const Decks: React.FC = () => {
   const { token, user, logout } = useAuth();
   const [decks, setDecks] = useState<Deck[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedDeckId, setSelectedDeckId] = useState<string | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -39,6 +41,10 @@ export const Decks: React.FC = () => {
       alert(`Failed to create deck`);
     }
   };
+
+  if (selectedDeckId) {
+    return <DeckEditor deckId={selectedDeckId} onBack={() => setSelectedDeckId(null)} />;
+  }
 
   return (
     <div className="max-w-6xl mx-auto p-4 py-12">
@@ -98,7 +104,7 @@ export const Decks: React.FC = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {decks.map(deck => (
-                <div key={deck.id} className="group relative glass-light p-6 rounded-3xl border border-white/10 hover:border-primary/30 transition-all cursor-pointer">
+                <div key={deck.id} onClick={() => setSelectedDeckId(deck.id)} className="group relative glass-light p-6 rounded-3xl border border-white/10 hover:border-primary/30 transition-all cursor-pointer">
                   <div className="flex justify-between items-start mb-4">
                     <div className="p-2 bg-primary/10 rounded-xl">
                       <Hash size={16} className="text-primary" />
