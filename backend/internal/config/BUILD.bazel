@@ -1,0 +1,24 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "config",
+    srcs = ["config.go"],
+    importpath = "github.com/yanicksenn/ruthless/backend/internal/config",
+    visibility = ["//backend:__subpackages__"],
+    deps = [
+        "//api/v1:ruthlespb_go_proto",
+        "@org_golang_google_protobuf//encoding/prototext",
+    ],
+)
+
+load("@rules_go//go:def.bzl", "go_test")
+
+go_test(
+    name = "config_test",
+    srcs = ["config_test.go"],
+    embed = [":config"],
+    deps = [
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

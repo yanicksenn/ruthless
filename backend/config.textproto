@@ -1,0 +1,3 @@
+limits {
+  card_text_limit: 280
+}

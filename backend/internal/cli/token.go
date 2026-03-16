@@ -7,21 +7,28 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
+
+	pb "github.com/yanicksenn/ruthless/api/v1"
 )
 var (
 	clientSecretFile string
 	callbackPort     int
-	tokenFile        string
+	saveTo           string
 )
 
 func init() {
 	tokenCmd.PersistentFlags().StringVar(&clientSecretFile, "client-secret", "secrets/client_secret_dev.json", "path to Google Client Secret JSON")
 	tokenCmd.PersistentFlags().IntVar(&callbackPort, "callback-port", 9999, "local port to listen on for the OAuth callback")
-	tokenCmd.PersistentFlags().StringVar(&tokenFile, "token-file", "", "optional path to save the received ID Token")
+	tokenCmd.PersistentFlags().StringVar(&saveTo, "save-to", "", "optional path to save the received ID Token")
+	
 	rootCmd.AddCommand(tokenCmd)
 }
 
@@ -98,18 +105,51 @@ var loginCmd = &cobra.Command{
 
 		fmt.Printf("\nID Token:\n%s\n", idToken)
 
-		if tokenFile != "" {
-			if err := os.MkdirAll(filepath.Dir(tokenFile), 0755); err != nil {
+		if saveTo != "" {
+			if err := os.MkdirAll(filepath.Dir(saveTo), 0755); err != nil {
 				log.Fatalf("Unable to create directories for token file: %v", err)
 			}
-			if err := os.WriteFile(tokenFile, []byte(idToken), 0600); err != nil {
+			if err := os.WriteFile(saveTo, []byte(idToken), 0600); err != nil {
 				log.Fatalf("Unable to write token to file: %v", err)
 			}
-			fmt.Printf("Token saved to: %s\n", tokenFile)
 		}
+	},
+}
+
+var registerCmd = &cobra.Command{
+	Use:   "register",
+	Short: "Register the current user",
+	Run: func(cmd *cobra.Command, args []string) {
+		conn, err := grpc.NewClient(grpcHost, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if err != nil {
+			log.Fatalf("Failed to connect: %v", err)
+		}
+		defer conn.Close()
+
+		client := pb.NewUserServiceClient(conn)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		token, err := ResolveToken(cmd)
+		if err != nil {
+			log.Fatalf("Token error: %v", err)
+		}
+		if token != "" {
+			ctx = metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+token)
+		}
+
+		user, err := client.Register(ctx, &pb.RegisterRequest{})
+		if err != nil {
+			log.Fatalf("Registration failed: %v", err)
+		}
+
+		fmt.Printf("Successfully registered: %s (ID: %s)\n", user.Name, user.Id)
 	},
 }
 
 func init() {
 	tokenCmd.AddCommand(loginCmd)
+	tokenCmd.AddCommand(registerCmd)
+
+	AddTokenFlags(tokenCmd)
 }

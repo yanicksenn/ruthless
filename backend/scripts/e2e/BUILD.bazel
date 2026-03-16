@@ -1,22 +1,4 @@
-load("@rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
-
-# Legacy end-to-end validator
-go_library(
-    name = "e2e_lib",
-    srcs = ["e2e_test.go"],
-    importpath = "github.com/yanicksenn/ruthless/backend/scripts/e2e",
-    visibility = ["//visibility:private"],
-    deps = [
-        "//api/v1:ruthlespb_go_proto",
-        "//backend/internal/storage",
-        "//backend/scripts/testutil",
-        "@com_github_golang_jwt_jwt_v5//:jwt",
-        "@org_golang_google_grpc//:grpc",
-        "@org_golang_google_grpc//credentials/insecure",
-        "@org_golang_google_grpc//metadata",
-        "@org_golang_x_oauth2//:oauth2",
-    ],
-)
+load("@rules_go//go:def.bzl", "go_test")
 
 go_test(
     name = "e2e_test",
@@ -36,10 +18,5 @@ go_test(
         "//api/v1:ruthlespb_go_proto",
         "//backend/internal/storage",
         "//backend/scripts/testutil",
-        "@com_github_golang_jwt_jwt_v5//:jwt",
-        "@org_golang_google_grpc//:grpc",
-        "@org_golang_google_grpc//credentials/insecure",
-        "@org_golang_google_grpc//metadata",
-        "@org_golang_x_oauth2//:oauth2",
     ],
 )

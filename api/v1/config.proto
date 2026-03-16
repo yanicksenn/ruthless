@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package ruthless.v1;
+
+option go_package = "github.com/yanicksenn/ruthless/api/v1;ruthlespb";
+
+message Config {
+  message Limits {
+    uint32 card_text_limit = 1;
+  }
+  Limits limits = 1;
+}

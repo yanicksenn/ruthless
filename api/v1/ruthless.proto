@@ -5,6 +5,7 @@ package ruthless.v1;
 option go_package = "github.com/yanicksenn/ruthless/api/v1;ruthlespb";
 
 import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
 
 enum CardColor {
   CARD_COLOR_UNSPECIFIED = 0;
@@ -91,9 +92,17 @@ message Game {
 
 // ----------------- Card Service -----------------
 
-message ListCardsRequest {}
+message ListCardsRequest {
+  int32 page_size = 1;
+  int32 page_number = 2;
+}
 message ListCardsResponse {
   repeated Card cards = 1;
+  int32 total_count = 2;
+}
+
+message DeleteCardRequest {
+  string id = 1;
 }
 
 message CreateCardRequest {
@@ -103,6 +112,7 @@ message CreateCardRequest {
 service CardService {
   rpc ListCards (ListCardsRequest) returns (ListCardsResponse);
   rpc CreateCard (CreateCardRequest) returns (Card);
+  rpc DeleteCard (DeleteCardRequest) returns (google.protobuf.Empty);
 }
 
 // ----------------- Deck Service -----------------

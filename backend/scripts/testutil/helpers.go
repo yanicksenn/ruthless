@@ -73,7 +73,7 @@ func StartTestServer(ctx context.Context, googleAudience string) (string, storag
 		fake:   fake.New(),
 	}
 
-	srv := server.New(store, flexibleAuth)
+	srv := server.New(store, flexibleAuth, &pb.Config{})
 	listener, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
 		return "", nil, nil, fmt.Errorf("failed to listen: %v", err)

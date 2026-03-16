@@ -20,7 +20,10 @@ var decksCmd = &cobra.Command{
 }
 
 func getDeckClientAndCtx(cmd *cobra.Command) (pb.DeckServiceClient, context.Context, context.CancelFunc, *grpc.ClientConn) {
-	token, _ := cmd.Flags().GetString("token")
+	token, err := ResolveToken(cmd)
+	if err != nil {
+		log.Fatalf("Token error: %v", err)
+	}
 	conn, err := grpc.NewClient(grpcHost, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("Failed to connect: %v", err)
@@ -76,7 +79,10 @@ var decksAddCardCmd = &cobra.Command{
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		
-		token, _ := cmd.Flags().GetString("token")
+		token, err := ResolveToken(cmd)
+		if err != nil {
+			log.Fatalf("Token error: %v", err)
+		}
 		if token != "" {
 			ctx = metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+token)
 		}
@@ -97,4 +103,9 @@ func init() {
 	rootCmd.AddCommand(decksCmd)
 	decksCmd.AddCommand(decksCreateCmd)
 	decksCmd.AddCommand(decksAddCardCmd)
+
+	decksCreateCmd.Flags().String("name", "", "The name of the deck")
+	decksCreateCmd.MarkFlagRequired("name")
+
+	AddTokenFlags(decksCmd)
 }

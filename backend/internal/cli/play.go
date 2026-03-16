@@ -53,7 +53,10 @@ var playJoinCmd = &cobra.Command{
 			log.Fatal("Player name is required")
 		}
 
-		token, _ := cmd.Flags().GetString("token")
+		token, err := ResolveToken(cmd)
+		if err != nil {
+			log.Fatalf("Token error: %v", err)
+		}
 		if token == "" {
 			// For testing with fake auth, we just use the name as token
 			token = playerName
@@ -120,6 +123,7 @@ func init() {
 	playCmd.AddCommand(playAddDeckCmd)
 
 	playJoinCmd.Flags().String("name", "", "Your player name")
-	playJoinCmd.Flags().String("token", "", "Auth token (optional, uses name for fake auth if omitted)")
 	playJoinCmd.MarkFlagRequired("name")
+
+	AddTokenFlags(playJoinCmd)
 }

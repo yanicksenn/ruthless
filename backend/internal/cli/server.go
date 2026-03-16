@@ -16,6 +16,7 @@ import (
 	"github.com/yanicksenn/ruthless/backend/internal/auth"
 	"github.com/yanicksenn/ruthless/backend/internal/auth/fake"
 	"github.com/yanicksenn/ruthless/backend/internal/auth/jwt"
+	"github.com/yanicksenn/ruthless/backend/internal/config"
 	"github.com/yanicksenn/ruthless/backend/internal/server"
 	"github.com/yanicksenn/ruthless/backend/internal/storage"
 	"github.com/yanicksenn/ruthless/backend/internal/storage/memory"
@@ -29,6 +30,7 @@ var (
 	dbConnStr   string
 	authSecret     string
 	googleAudience string
+	configPath     string
 )
 
 func getEnv(key, fallback string) string {
@@ -78,7 +80,13 @@ var serverCmd = &cobra.Command{
 			log.Fatalf("Unsupported auth type: %s", authFlag)
 		}
 
-		srv := server.New(store, authenticator)
+		// Setup Config
+		cfg, err := config.Load(configPath)
+		if err != nil {
+			log.Fatalf("Failed to load configuration: %v", err)
+		}
+
+		srv := server.New(store, authenticator, cfg)
 
 		// Handle Seeding
 		if seedFlag != "" {
@@ -92,7 +100,10 @@ var serverCmd = &cobra.Command{
 		}
 
 		grpcServer := grpc.NewServer(
-			grpc.UnaryInterceptor(srv.UnaryAuthInterceptor()),
+			grpc.ChainUnaryInterceptor(
+				srv.UnaryLoggingInterceptor(), // Log first to capture auth errors too
+				srv.UnaryAuthInterceptor(),
+			),
 		)
 
 		srv.RegisterWithGRPC(grpcServer)
@@ -145,4 +156,5 @@ func init() {
 	serverCmd.Flags().StringVar(&dbConnStr, "db-conn-str", "", "PostgreSQL connection string")
 	serverCmd.Flags().StringVar(&authSecret, "auth-secret", "dev-secret", "JWT shared secret for auth (only for 'jwt' type)")
 	serverCmd.Flags().StringVar(&googleAudience, "google-audience", "", "Google OAuth Client ID (required for 'google' type)")
+	serverCmd.Flags().StringVar(&configPath, "config", "backend/config.textproto", "path to textproto config file")
 }

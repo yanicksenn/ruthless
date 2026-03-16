@@ -22,7 +22,10 @@ var gameCmd = &cobra.Command{
 
 // Internal helper
 func getGameClientAndCtx(cmd *cobra.Command) (pb.GameServiceClient, context.Context, context.CancelFunc, *grpc.ClientConn) {
-	token, _ := cmd.Flags().GetString("token")
+	token, err := ResolveToken(cmd)
+	if err != nil {
+		log.Fatalf("Token error: %v", err)
+	}
 	if token == "" {
 		log.Fatal("Token is required to interact with games. Usually this is your player name when using fake auth.")
 	}
@@ -187,4 +190,6 @@ func init() {
 	gameCmd.AddCommand(gameHandCmd)
 	gameCmd.AddCommand(gamePlayCardsCmd)
 	gameCmd.AddCommand(gameJudgeCmd)
+
+	AddTokenFlags(gameCmd)
 }

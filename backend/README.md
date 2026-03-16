@@ -19,9 +19,14 @@ Production-ready OIDC validation. The server validates tokens against Google's p
 #### **Obtaining an ID Token**
 To get a real ID token for manual testing or gameplay:
 ```bash
-bazel run //backend/cmd/cah -- token login --callback-port 9999
+bazel run //backend/cmd/cah -- token login --callback-port 9999 --save-to secrets/id_token.txt
 ```
-This will open your browser, allow you to log in with your Google account, and print a JWT `ID Token` to the terminal.
+This will open your browser, allow you to log in with your Google account, and print a JWT `ID Token` to the terminal. If `--save-to` is provided, the token will be saved to that file.
+
+You can then use this token in subsequent commands via the `--token-file` flag:
+```bash
+bazel run //backend/cmd/cah -- decks list --token-file secrets/id_token.txt
+```
 
 ## Security Model
 
@@ -49,6 +54,19 @@ You can pre-populate the server (memory storage only) with a JSON seed file cont
 
 ```bash
 bazel run //backend/cmd/cah -- server --storage=memory --auth=fake --seed=$(pwd)/seed.json
+```
+
+#### **Bulk Card Creation**
+You can bulk-create cards from a JSON file:
+```bash
+bazel run //backend/cmd/cah -- cards bulk-create --file cards.json
+```
+The JSON file should be an array of objects:
+```json
+[
+  { "text": "Card text 1 with a ___." },
+  { "text": "Card text 2." }
+]
 ```
 
 > [!NOTE]

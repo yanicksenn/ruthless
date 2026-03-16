@@ -137,10 +137,23 @@ func (s *Storage) GetCard(ctx context.Context, id string) (*pb.Card, error) {
 	return &c, nil
 }
 
-func (s *Storage) ListCards(ctx context.Context) ([]*pb.Card, error) {
-	rows, err := s.db.QueryContext(ctx, "SELECT id, text, color, owner_id, created_at, updated_at FROM cards")
+func (s *Storage) ListCards(ctx context.Context, pageSize, pageNumber int32) ([]*pb.Card, int32, error) {
+	var totalCount int32
+	err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM cards").Scan(&totalCount)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
+	}
+
+	query := "SELECT id, text, color, owner_id, created_at, updated_at FROM cards ORDER BY id"
+	var args []interface{}
+	if pageSize > 0 {
+		query += " LIMIT $1 OFFSET $2"
+		args = append(args, pageSize, (pageNumber-1)*pageSize)
+	}
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, 0, err
 	}
 	defer rows.Close()
 
@@ -152,7 +165,7 @@ func (s *Storage) ListCards(ctx context.Context) ([]*pb.Card, error) {
 		var updatedAt sql.NullTime
 		var ownerID sql.NullString
 		if err := rows.Scan(&c.Id, &c.Text, &color, &ownerID, &createdAt, &updatedAt); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		c.Color = pb.CardColor(color)
 		if ownerID.Valid {
@@ -166,7 +179,12 @@ func (s *Storage) ListCards(ctx context.Context) ([]*pb.Card, error) {
 		}
 		cards = append(cards, &c)
 	}
-	return cards, nil
+	return cards, totalCount, nil
+}
+
+func (s *Storage) DeleteCard(ctx context.Context, id string) error {
+	_, err := s.db.ExecContext(ctx, "DELETE FROM cards WHERE id = $1", id)
+	return err
 }
 
 // User operations

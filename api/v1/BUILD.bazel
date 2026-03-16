@@ -4,9 +4,15 @@ load("@rules_proto//proto:defs.bzl", "proto_library")
 
 proto_library(
     name = "ruthlespb_proto",
-    srcs = ["ruthless.proto"],
+    srcs = [
+        "config.proto",
+        "ruthless.proto",
+    ],
     visibility = ["//visibility:public"],
-    deps = ["@protobuf//:timestamp_proto"],
+    deps = [
+        "@protobuf//:timestamp_proto",
+        "@protobuf//:empty_proto",
+    ],
 )
 
 go_proto_library(

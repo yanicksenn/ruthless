@@ -10,6 +10,7 @@ go_library(
 
 go_binary(
     name = "cah",
+    data = ["//backend:config.textproto"],
     embed = [":cah_lib"],
     visibility = ["//visibility:public"],
 )

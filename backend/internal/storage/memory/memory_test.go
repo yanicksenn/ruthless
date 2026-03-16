@@ -32,13 +32,34 @@ func TestMemoryStorage_Cards(t *testing.T) {
 		t.Errorf("Retrieved card does not match original")
 	}
 
-	list, err := store.ListCards(ctx)
+	list, total, err := store.ListCards(ctx, 0, 0)
 	if err != nil {
 		t.Fatalf("Failed to list cards: %v", err)
 	}
 
-	if len(list) != 1 {
-		t.Errorf("Expected 1 card, got %d", len(list))
+	if len(list) != 1 || total != 1 {
+		t.Errorf("Expected 1 card and total 1, got %d cards and total %d", len(list), total)
+	}
+
+	// Pagination test
+	for i := 0; i < 5; i++ {
+		c, _ := domain.NewCard("Card", "owner-1")
+		_ = store.CreateCard(ctx, c)
+	}
+
+	list, total, err = store.ListCards(ctx, 2, 1) // First page
+	if err != nil || len(list) != 2 || total != 6 {
+		t.Errorf("Page 1 failed: got %d cards, total %d, err %v", len(list), total, err)
+	}
+
+	list, total, err = store.ListCards(ctx, 2, 2) // Second page
+	if err != nil || len(list) != 2 || total != 6 {
+		t.Errorf("Page 2 failed: got %d cards, total %d, err %v", len(list), total, err)
+	}
+
+	list, total, err = store.ListCards(ctx, 2, 4) // Out of bounds
+	if err != nil || len(list) != 0 || total != 6 {
+		t.Errorf("Out of bounds failed: got %d cards, total %d, err %v", len(list), total, err)
 	}
 
 	_, err = store.GetCard(ctx, "nonexistent")

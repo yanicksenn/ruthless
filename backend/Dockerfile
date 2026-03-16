@@ -22,7 +22,7 @@ RUN mkdir -p api/v1/ruthlespb
 RUN protoc --proto_path=. \
     --go_out=. --go_opt=paths=source_relative \
     --go-grpc_out=. --go-grpc_opt=paths=source_relative \
-    api/v1/ruthless.proto
+    api/v1/ruthless.proto api/v1/config.proto
 
 # Build the backend binary
 RUN go build -o /cah github.com/yanicksenn/ruthless/backend/cmd/cah
@@ -33,7 +33,10 @@ FROM alpine:latest
 # Install CA certificates for TLS (if needed)
 RUN apk add --no-cache ca-certificates
 
+WORKDIR /app
+
 COPY --from=build /cah /usr/local/bin/cah
+COPY --from=build /app/backend/config.textproto /app/backend/config.textproto
 
 EXPOSE 8080
 

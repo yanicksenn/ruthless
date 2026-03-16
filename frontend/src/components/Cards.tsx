@@ -10,12 +10,16 @@ export const Cards: React.FC = () => {
   const [cards, setCards] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [pageNumber, setPageNumber] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const pageSize = 12;
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const cardsRes = await cardClient.listCards({}, createOptions(token));
+      const cardsRes = await cardClient.listCards({ pageSize, pageNumber }, createOptions(token));
       setCards(cardsRes.response.cards || []);
+      setTotalCount(cardsRes.response.totalCount);
     } catch (err) {
       console.error('Failed to fetch cards:', err);
     } finally {
@@ -25,7 +29,9 @@ export const Cards: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-  }, [token]);
+  }, [token, pageNumber]);
+
+  const totalPages = Math.ceil(totalCount / pageSize);
 
   const handleOpenCardDialog = () => {
     setIsDialogOpen(true);
@@ -37,6 +43,16 @@ export const Cards: React.FC = () => {
       fetchData();
     } catch (err) {
       alert(`Failed to create card`);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this card?')) return;
+    try {
+      await cardClient.deleteCard({ id }, createOptions(token));
+      fetchData();
+    } catch (err: any) {
+      alert(`Failed to delete card: ${err.message || err}`);
     }
   };
 
@@ -100,9 +116,14 @@ export const Cards: React.FC = () => {
                   <span className="text-[10px] font-black tracking-widest uppercase">
                     {card.color === 1 ? 'Black Card' : 'White Card'}
                   </span>
-                  <button className="text-gray-400 hover:text-red-500 transition-colors">
-                    <Trash2 size={14} />
-                  </button>
+                  {user && card.ownerId === user.id && (
+                    <button 
+                      onClick={() => handleDelete(card.id)}
+                      className="text-gray-400 hover:text-red-500 transition-colors"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
@@ -112,6 +133,29 @@ export const Cards: React.FC = () => {
               </div>
             )}
           </div>
+
+          {totalPages > 1 && (
+            <div className="mt-12 flex justify-center items-center gap-6">
+              <button
+                onClick={() => setPageNumber(p => Math.max(1, p - 1))}
+                disabled={pageNumber === 1 || loading}
+                className="px-6 py-2 rounded-xl bg-white/5 border border-white/10 text-white font-bold disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/10 transition-colors"
+              >
+                PREVIOUS
+              </button>
+              <div className="flex flex-col items-center">
+                <span className="text-white font-black text-xl tracking-tighter">{pageNumber}</span>
+                <span className="text-gray-500 text-[10px] font-bold uppercase tracking-widest">OF {totalPages}</span>
+              </div>
+              <button
+                onClick={() => setPageNumber(p => Math.min(totalPages, p + 1))}
+                disabled={pageNumber === totalPages || loading}
+                className="px-6 py-2 rounded-xl bg-white/5 border border-white/10 text-white font-bold disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/10 transition-colors"
+              >
+                NEXT
+              </button>
+            </div>
+          )}
         </div>
       </div>
       <CreationDialog

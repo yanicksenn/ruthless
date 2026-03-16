@@ -2,6 +2,7 @@ package memory
 
 import (
 	"context"
+	"sort"
 	"sync"
 
 	pb "github.com/yanicksenn/ruthless/api/v1"
@@ -69,15 +70,43 @@ func (s *Storage) GetCard(ctx context.Context, id string) (*pb.Card, error) {
 	return card, nil
 }
 
-func (s *Storage) ListCards(ctx context.Context) ([]*pb.Card, error) {
+func (s *Storage) ListCards(ctx context.Context, pageSize, pageNumber int32) ([]*pb.Card, int32, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	list := make([]*pb.Card, 0, len(s.cards))
+	totalCount := int32(len(s.cards))
+	allCards := make([]*pb.Card, 0, totalCount)
 	for _, c := range s.cards {
-		list = append(list, c)
+		allCards = append(allCards, c)
 	}
-	return list, nil
+
+	// Simple sort to ensure stable pagination for memory storage
+	sort.Slice(allCards, func(i, j int) bool {
+		return allCards[i].Id < allCards[j].Id
+	})
+
+	if pageSize <= 0 {
+		return allCards, totalCount, nil
+	}
+
+	start := (pageNumber - 1) * pageSize
+	if start >= totalCount {
+		return nil, totalCount, nil
+	}
+
+	end := start + pageSize
+	if end > totalCount {
+		end = totalCount
+	}
+
+	return allCards[start:end], totalCount, nil
+}
+
+func (s *Storage) DeleteCard(ctx context.Context, id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.cards, id)
+	return nil
 }
 
 func (s *Storage) CreateSession(ctx context.Context, session *pb.Session) error {

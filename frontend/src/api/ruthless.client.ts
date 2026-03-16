@@ -43,6 +43,8 @@ import type { ListDecksRequest } from "./ruthless";
 import type { RpcTransport } from "@protobuf-ts/runtime-rpc";
 import type { ServiceInfo } from "@protobuf-ts/runtime-rpc";
 import { CardService } from "./ruthless";
+import type { Empty } from "./google/protobuf/empty";
+import type { DeleteCardRequest } from "./ruthless";
 import type { Card } from "./ruthless";
 import type { CreateCardRequest } from "./ruthless";
 import { stackIntercept } from "@protobuf-ts/runtime-rpc";
@@ -62,6 +64,10 @@ export interface ICardServiceClient {
      * @generated from protobuf rpc: CreateCard
      */
     createCard(input: CreateCardRequest, options?: RpcOptions): UnaryCall<CreateCardRequest, Card>;
+    /**
+     * @generated from protobuf rpc: DeleteCard
+     */
+    deleteCard(input: DeleteCardRequest, options?: RpcOptions): UnaryCall<DeleteCardRequest, Empty>;
 }
 /**
  * @generated from protobuf service ruthless.v1.CardService
@@ -85,6 +91,13 @@ export class CardServiceClient implements ICardServiceClient, ServiceInfo {
     createCard(input: CreateCardRequest, options?: RpcOptions): UnaryCall<CreateCardRequest, Card> {
         const method = this.methods[1], opt = this._transport.mergeOptions(options);
         return stackIntercept<CreateCardRequest, Card>("unary", this._transport, method, opt, input);
+    }
+    /**
+     * @generated from protobuf rpc: DeleteCard
+     */
+    deleteCard(input: DeleteCardRequest, options?: RpcOptions): UnaryCall<DeleteCardRequest, Empty> {
+        const method = this.methods[2], opt = this._transport.mergeOptions(options);
+        return stackIntercept<DeleteCardRequest, Empty>("unary", this._transport, method, opt, input);
     }
 }
 /**

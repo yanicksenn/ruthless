@@ -40,8 +40,9 @@ docker-compose logs -f backend
 
 ### CLI Client
 
-The CLI tool acts as a full game client! Most commands require a `--token` for identification.
-- In **fake auth** (default local), use any name: `--token Alice`.
+The CLI tool acts as a full game client! Most commands require a token for identification, which can be provided via a flag or a file.
+- **Using flags**: Use `--token Alice`. In **fake auth** (default local), use any name.
+- **Using files**: Use `--token-file /path/to/token.txt`. The CLI will read the token from the file.
 - In **google auth**, use a real ID Token (see Backend README).
 
 #### **Interactive TUI Mode (Recommended)**

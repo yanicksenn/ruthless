@@ -22,10 +22,13 @@ var tuiCmd = &cobra.Command{
 	Short: "Start an interactive game session",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		host, _ := cmd.Flags().GetString("host")
-		token, _ := cmd.Flags().GetString("token")
+		token, err := ResolveToken(cmd)
+		if err != nil {
+			return err
+		}
 
 		if token == "" {
-			return fmt.Errorf("token is required (use --token)")
+			return fmt.Errorf("token is required (use --token or --token-file)")
 		}
 
 		conn, err := grpc.NewClient(host, grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -44,6 +47,7 @@ var tuiCmd = &cobra.Command{
 
 func init() {
 	playCmd.AddCommand(tuiCmd)
+	AddTokenFlags(tuiCmd)
 }
 
 type sessionItem struct {
