@@ -17,41 +17,19 @@ func (s *Server) CreateGame(ctx context.Context, req *pb.CreateGameRequest) (*pb
 		return nil, status.Errorf(codes.NotFound, "session not found")
 	}
 
-	game := domain.NewGame(req.SessionId)
-	game.PlayerIds = session.PlayerIds
-
-	// Denormalize players
-	for _, pid := range session.PlayerIds {
-		user, err := s.store.GetUser(ctx, pid)
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "failed to fetch player %s: %v", pid, err)
-		}
-		game.Players = append(game.Players, &pb.Player{
-			Id:   user.Id,
-			Name: user.Name,
-		})
+	minPlayers := 2
+	if s.config != nil && s.config.Game != nil && s.config.Game.MinRequiredPlayers > 0 {
+		minPlayers = int(s.config.Game.MinRequiredPlayers)
 	}
 
-	// Denormalize cards/decks
-	cards, _, err := s.store.ListCards(ctx, 0, 0, nil)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to fetch cards")
-	}
-	cardMap := make(map[string]*pb.Card)
-	for _, c := range cards {
-		cardMap[c.Id] = c
+	game := domain.NewGame(req.SessionId, uint32(minPlayers))
+	if err := s.syncGamePlayers(ctx, game, session); err != nil {
+		return nil, err
 	}
 
-	decks, err := s.store.ListDecks(ctx)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to fetch decks")
+	if err := s.syncGameDecks(ctx, game, session); err != nil {
+		return nil, err
 	}
-	deckMap := make(map[string]*pb.Deck)
-	for _, d := range decks {
-		deckMap[d.Id] = d
-	}
-
-	domain.ConsolidateDecks(game, session.DeckIds, deckMap, cardMap)
 
 	if err := s.store.CreateGame(ctx, game); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create game")
@@ -87,7 +65,20 @@ func (s *Server) StartGame(ctx context.Context, req *pb.StartGameRequest) (*pb.G
 		return nil, status.Errorf(codes.PermissionDenied, "only the session owner can start the game")
 	}
 
-	if err := domain.StartGame(game); err != nil {
+	minPlayers := 2
+	if s.config != nil && s.config.Game != nil && s.config.Game.MinRequiredPlayers > 0 {
+		minPlayers = int(s.config.Game.MinRequiredPlayers)
+	}
+
+	if err := s.syncGamePlayers(ctx, game, session); err != nil {
+		return nil, err
+	}
+
+	if err := s.syncGameDecks(ctx, game, session); err != nil {
+		return nil, err
+	}
+
+	if err := domain.StartGame(game, minPlayers); err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "failed to start game: %v", err)
 	}
 
@@ -176,4 +167,46 @@ func (s *Server) GetGameBySession(ctx context.Context, req *pb.GetGameBySessionR
 		return nil, status.Errorf(codes.NotFound, "game not found for session")
 	}
 	return domain.StripHidden(game), nil
+}
+func (s *Server) syncGameDecks(ctx context.Context, game *pb.Game, session *pb.Session) error {
+	game.HiddenBlackDeck = nil
+	game.HiddenWhiteDeck = nil
+
+	cards, _, err := s.store.ListCards(ctx, 0, 0, nil, "", nil)
+	if err != nil {
+		return status.Errorf(codes.Internal, "failed to fetch cards")
+	}
+	cardMap := make(map[string]*pb.Card)
+	for _, c := range cards {
+		cardMap[c.Id] = c
+	}
+
+	decks, err := s.store.ListDecks(ctx)
+	if err != nil {
+		return status.Errorf(codes.Internal, "failed to fetch decks")
+	}
+	deckMap := make(map[string]*pb.Deck)
+	for _, d := range decks {
+		deckMap[d.Id] = d
+	}
+
+	domain.ConsolidateDecks(game, session.DeckIds, deckMap, cardMap)
+	return nil
+}
+
+func (s *Server) syncGamePlayers(ctx context.Context, game *pb.Game, session *pb.Session) error {
+	game.PlayerIds = session.PlayerIds
+	game.Players = nil // Clear existing players before sync
+
+	for _, pid := range session.PlayerIds {
+		user, err := s.store.GetUser(ctx, pid)
+		if err != nil {
+			return status.Errorf(codes.Internal, "failed to fetch player %s: %v", pid, err)
+		}
+		game.Players = append(game.Players, &pb.Player{
+			Id:   user.Id,
+			Name: user.Name,
+		})
+	}
+	return nil
 }

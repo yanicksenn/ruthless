@@ -3,6 +3,7 @@ package memory
 import (
 	"context"
 	"sort"
+	"strings"
 	"sync"
 
 	pb "github.com/yanicksenn/ruthless/api/v1"
@@ -70,33 +71,55 @@ func (s *Storage) GetCard(ctx context.Context, id string) (*pb.Card, error) {
 	return card, nil
 }
 
-func (s *Storage) ListCards(ctx context.Context, pageSize, pageNumber int32, ids []string) ([]*pb.Card, int32, error) {
+func (s *Storage) ListCards(ctx context.Context, pageSize, pageNumber int32, ids []string, filter string, orderBy *pb.CardOrder) ([]*pb.Card, int32, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	var filteredCards []*pb.Card
-	if len(ids) > 0 {
-		idMap := make(map[string]bool)
-		for _, id := range ids {
-			idMap[id] = true
+	idMap := make(map[string]bool)
+	for _, id := range ids {
+		idMap[id] = true
+	}
+
+	for _, c := range s.cards {
+		// Filter by ID list if provided
+		if len(ids) > 0 && !idMap[c.Id] {
+			continue
 		}
-		for _, c := range s.cards {
-			if idMap[c.Id] {
-				filteredCards = append(filteredCards, c)
+		// Filter by substring if provided
+		if filter != "" && !strings.Contains(strings.ToLower(c.Text), strings.ToLower(filter)) {
+			continue
+		}
+		filteredCards = append(filteredCards, c)
+	}
+
+	// Dynamic sorting
+	if orderBy != nil {
+		sort.Slice(filteredCards, func(i, j int) bool {
+			var less bool
+			switch orderBy.Field {
+			case pb.CardOrderField_CARD_ORDER_FIELD_TEXT:
+				less = filteredCards[i].Text < filteredCards[j].Text
+			case pb.CardOrderField_CARD_ORDER_FIELD_CREATED_AT:
+				ti := filteredCards[i].CreatedAt.AsTime()
+				tj := filteredCards[j].CreatedAt.AsTime()
+				less = ti.Before(tj)
+			default:
+				less = filteredCards[i].Id < filteredCards[j].Id
 			}
-		}
+			if orderBy.Descending {
+				return !less
+			}
+			return less
+		})
 	} else {
-		for _, c := range s.cards {
-			filteredCards = append(filteredCards, c)
-		}
+		// Default sort
+		sort.Slice(filteredCards, func(i, j int) bool {
+			return filteredCards[i].Id < filteredCards[j].Id
+		})
 	}
 
 	totalCount := int32(len(filteredCards))
-
-	// Simple sort to ensure stable pagination for memory storage
-	sort.Slice(filteredCards, func(i, j int) bool {
-		return filteredCards[i].Id < filteredCards[j].Id
-	})
 
 	if pageSize <= 0 {
 		return filteredCards, totalCount, nil

@@ -13,7 +13,7 @@ import (
 )
 
 func (s *Server) ListCards(ctx context.Context, req *pb.ListCardsRequest) (*pb.ListCardsResponse, error) {
-	cards, totalCount, err := s.store.ListCards(ctx, req.PageSize, req.PageNumber, req.Ids)
+	cards, totalCount, err := s.store.ListCards(ctx, req.PageSize, req.PageNumber, req.Ids, req.Filter, req.OrderBy)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to list cards")
 	}

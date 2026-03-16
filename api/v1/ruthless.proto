@@ -88,15 +88,30 @@ message Game {
   repeated Player players = 9;
   repeated string player_ids = 10;
   google.protobuf.Timestamp created_at = 11;
+  uint32 min_required_players = 12;
 }
 
 // ----------------- Card Service -----------------
+
+enum CardOrderField {
+  CARD_ORDER_FIELD_UNSPECIFIED = 0;
+  CARD_ORDER_FIELD_TEXT = 1;
+  CARD_ORDER_FIELD_CREATED_AT = 2;
+}
+
+message CardOrder {
+  CardOrderField field = 1;
+  bool descending = 2;
+}
 
 message ListCardsRequest {
   int32 page_size = 1;
   int32 page_number = 2;
   repeated string ids = 3;
+  string filter = 4;
+  CardOrder order_by = 5;
 }
+
 message ListCardsResponse {
   repeated Card cards = 1;
   int32 total_count = 2;
@@ -167,7 +182,9 @@ service DeckService {
 
 // ----------------- Session Service -----------------
 
-message CreateSessionRequest {}
+message CreateSessionRequest {
+  repeated string deck_ids = 1;
+}
 
 message JoinSessionRequest {
   string session_id = 1;
@@ -189,9 +206,15 @@ message ListSessionsResponse {
   repeated Session sessions = 1;
 }
 
+message LeaveSessionRequest {
+  string session_id = 1;
+}
+message LeaveSessionResponse {}
+
 service SessionService {
   rpc CreateSession (CreateSessionRequest) returns (Session);
   rpc JoinSession (JoinSessionRequest) returns (Session);
+  rpc LeaveSession (LeaveSessionRequest) returns (LeaveSessionResponse);
   rpc GetSession (GetSessionRequest) returns (Session);
   rpc AddDeckToSession (AddDeckToSessionRequest) returns (AddDeckToSessionResponse);
   rpc ListSessions (ListSessionsRequest) returns (ListSessionsResponse);

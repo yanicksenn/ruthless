@@ -43,11 +43,11 @@ func ConsolidateDecks(game *pb.Game, deckIDs []string, allDecks map[string]*pb.D
 	}
 }
 
-func StartGame(game *pb.Game) error {
+func StartGame(game *pb.Game, minPlayers int) error {
 	if game.State != pb.GameState_GAME_STATE_WAITING {
 		return ErrGameNotWaiting
 	}
-	if len(game.PlayerIds) < 2 {
+	if len(game.PlayerIds) < minPlayers {
 		return errors.New("not enough players")
 	}
 
@@ -224,9 +224,10 @@ func StripHidden(game *pb.Game) *pb.Game {
 		State:     game.State,
 		Rounds:    game.Rounds, // rounds are safe to share
 		Scores:    game.Scores,
-		Players:   game.Players,
-		PlayerIds: game.PlayerIds,
-		CreatedAt: game.CreatedAt,
+		Players:            game.Players,
+		PlayerIds:          game.PlayerIds,
+		CreatedAt:          game.CreatedAt,
+		MinRequiredPlayers: game.MinRequiredPlayers,
 	}
 	return clone
 }

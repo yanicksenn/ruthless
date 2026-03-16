@@ -18,6 +18,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({ sessionId, onLeave }) => {
   const [selectedCards, setSelectedCards] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [decks, setDecks] = useState<{id: string, name: string}[]>([]);
+  const [hoveredPlayId, setHoveredPlayId] = useState<string | null>(null);
 
   const isOwner = session?.ownerId === user?.id;
 
@@ -30,9 +31,9 @@ export const GameBoard: React.FC<GameBoardProps> = ({ sessionId, onLeave }) => {
         const gResponse = await gameClient.getGameBySession({ sessionId }, createOptions(token));
         setGame(gResponse.response);
         
-        if (gResponse.response.state === GameState.PLAYING) {
+        if (gResponse.response.state === GameState.PLAYING || gResponse.response.state === GameState.JUDGING) {
            const hResponse = await gameClient.getHand({ gameId: gResponse.response.id }, createOptions(token));
-           setHand(hResponse.response.cards);
+           setHand(hResponse.response.cards || []);
         }
       } catch (gErr) {
         // Game might not be created yet, that's fine
@@ -100,13 +101,60 @@ export const GameBoard: React.FC<GameBoardProps> = ({ sessionId, onLeave }) => {
   const currentRound = game?.rounds[game.rounds.length - 1];
   const isCzar = currentRound?.czarId === user?.id;
 
+  const handleLeave = async () => {
+    try {
+      await sessionClient.leaveSession({ sessionId }, createOptions(token));
+      onLeave();
+    } catch (err) {
+      console.error('Failed to leave session:', err);
+      onLeave(); // Leave anyway on frontend
+    }
+  };
+
+  const renderBlackCardText = (text: string) => {
+    if (!text) return "...";
+    const parts = text.split('___');
+    if (parts.length === 1) return text;
+
+    // Czar see only blanks during PLAYING phase
+    const showBlanks = isCzar && game?.state === GameState.PLAYING;
+    
+    // During judging, Czar can see preview of hovered play
+    const previewCards = (isCzar && game?.state === GameState.JUDGING && hoveredPlayId) 
+      ? Object.values(currentRound?.plays || {}).find(p => p.id === hoveredPlayId)?.cards 
+      : null;
+
+    return (
+      <>
+        {parts.map((part, i) => (
+          <React.Fragment key={i}>
+            {part}
+            {i < parts.length - 1 && (
+              <span className={`inline-block border-b-2 px-2 min-w-[80px] text-center transition-all ${
+                (!showBlanks && (selectedCards[i] || previewCards?.[i])) 
+                  ? 'text-primary border-primary italic mx-1' 
+                  : 'text-gray-600 border-gray-600 translate-y-1'
+              }`}>
+                {!showBlanks && (previewCards?.[i]?.text || (selectedCards[i] ? hand.find(c => c.id === selectedCards[i])?.text : ""))}
+              </span>
+            )}
+          </React.Fragment>
+        ))}
+      </>
+    );
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       {/* Top Bar */}
       <nav className="glass border-b border-white/5 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
-        <button onClick={onLeave} className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
-          <ArrowLeft size={18} /> <span className="font-bold text-xs uppercase tracking-widest">Quit to Lobby</span>
-        </button>
+        <div>
+          {(!game || game.state === GameState.WAITING) && (
+            <button onClick={handleLeave} className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
+              <ArrowLeft size={18} /> <span className="font-bold text-xs uppercase tracking-widest">Quit to Lobby</span>
+            </button>
+          )}
+        </div>
         <div className="flex items-center gap-6">
            <div className="flex items-center gap-2">
              <Users size={16} className="text-primary" />
@@ -182,10 +230,22 @@ export const GameBoard: React.FC<GameBoardProps> = ({ sessionId, onLeave }) => {
                  </div>
                  <div>
                     <h2 className="text-3xl font-black mb-2">READY TO START?</h2>
-                    <p className="text-gray-400 text-sm font-bold uppercase tracking-wider">All players accounted for</p>
+                    <p className="text-gray-400 text-sm font-bold uppercase tracking-wider">
+                      {session?.playerIds.length || 0} Players Joined
+                    </p>
+                    {game.minRequiredPlayers > (session?.playerIds.length || 0) && (
+                      <div className="mt-4 flex items-center justify-center gap-2 text-red-500 font-bold bg-red-500/10 p-2 rounded-xl border border-red-500/20">
+                        <Info size={16} />
+                        <span className="text-xs uppercase tracking-tight">Need {game.minRequiredPlayers - (session?.playerIds.length || 0)} more to start</span>
+                      </div>
+                    )}
                  </div>
                  {isOwner ? (
-                    <button onClick={handleStartGame} className="w-full bg-primary hover:bg-primary-dark text-white font-black py-4 rounded-2xl">
+                    <button 
+                      onClick={handleStartGame} 
+                      disabled={(session?.playerIds.length || 0) < game.minRequiredPlayers}
+                      className="w-full bg-primary hover:bg-primary-dark disabled:opacity-30 disabled:cursor-not-allowed text-white font-black py-4 rounded-2xl transition-all"
+                    >
                       START FIRST ROUND
                     </button>
                  ) : (
@@ -202,7 +262,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({ sessionId, onLeave }) => {
                    className="bg-black border border-white/20 p-8 rounded-2xl w-full max-w-sm aspect-[3/4] flex flex-col justify-between card-shadow shadow-primary/20"
                  >
                     <p className="text-2xl font-black leading-tight tracking-tight">
-                       {currentRound?.blackCard?.text || "..."}
+                       {renderBlackCardText(currentRound?.blackCard?.text || "")}
                     </p>
                     <div className="flex justify-between items-end">
                        <div className="text-[10px] font-black tracking-[0.2em] opacity-30">RUTHLESS</div>
@@ -236,6 +296,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({ sessionId, onLeave }) => {
                            key={pid} 
                            className={`glass p-6 rounded-2xl flex flex-col justify-between aspect-[4/3] relative group transition-all ${isCzar ? 'hover:border-primary cursor-pointer' : ''}`}
                            onClick={() => isCzar && handleSelectWinner(play.id)}
+                           onMouseEnter={() => isCzar && setHoveredPlayId(play.id)}
+                           onMouseLeave={() => isCzar && setHoveredPlayId(null)}
                         >
                            <div className="space-y-2">
                               {play.cards.map(c => (
@@ -263,12 +325,18 @@ export const GameBoard: React.FC<GameBoardProps> = ({ sessionId, onLeave }) => {
                          </button>
                       </div>
                       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                         {hand.map((card) => (
+                         {(hand || []).map((card) => (
                            <div 
                               key={card.id}
                               onClick={() => {
-                                if (selectedCards.includes(card.id)) setSelectedCards(s => s.filter(id => id !== card.id));
-                                else setSelectedCards(s => [...s, card.id]);
+                                if (selectedCards.includes(card.id)) {
+                                  setSelectedCards(s => s.filter(id => id !== card.id));
+                                } else {
+                                  const blankCount = (currentRound?.blackCard?.text.split('___').length || 1) - 1;
+                                  if (selectedCards.length < Math.max(1, blankCount)) {
+                                    setSelectedCards(s => [...s, card.id]);
+                                  }
+                                }
                               }}
                               className={`p-4 rounded-xl border aspect-[1/1] text-sm font-bold transition-all flex flex-col justify-between cursor-pointer ${
                                 selectedCards.includes(card.id) 
@@ -277,7 +345,12 @@ export const GameBoard: React.FC<GameBoardProps> = ({ sessionId, onLeave }) => {
                               }`}
                            >
                               <p className="line-clamp-4">{card.text}</p>
-                              <div className="flex justify-end opacity-20"><Info size={12} /></div>
+                              <div className="flex justify-between items-center">
+                                <span className="text-[10px] font-black opacity-40">
+                                  {selectedCards.indexOf(card.id) !== -1 ? `#${selectedCards.indexOf(card.id) + 1}` : ''}
+                                </span>
+                                <div className="opacity-20"><Info size={12} /></div>
+                              </div>
                            </div>
                          ))}
                       </div>

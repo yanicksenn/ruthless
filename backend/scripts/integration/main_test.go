@@ -57,6 +57,10 @@ func TestIntegration(t *testing.T) {
 		runAuthTests(t, ctx, client, runID)
 	})
 
+	t.Run("CardTests", func(t *testing.T) {
+		runCardTests(t, ctx, client, runID)
+	})
+
 	t.Run("DeckTests", func(t *testing.T) {
 		runDeckTests(t, ctx, client, runID)
 	})

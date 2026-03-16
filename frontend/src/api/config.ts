@@ -18,6 +18,10 @@ export interface Config {
      * @generated from protobuf field: ruthless.v1.Config.Limits limits = 1
      */
     limits?: Config_Limits;
+    /**
+     * @generated from protobuf field: ruthless.v1.Config.Game game = 2
+     */
+    game?: Config_Game;
 }
 /**
  * @generated from protobuf message ruthless.v1.Config.Limits
@@ -28,11 +32,21 @@ export interface Config_Limits {
      */
     cardTextLimit: number;
 }
+/**
+ * @generated from protobuf message ruthless.v1.Config.Game
+ */
+export interface Config_Game {
+    /**
+     * @generated from protobuf field: uint32 min_required_players = 1
+     */
+    minRequiredPlayers: number;
+}
 // @generated message type with reflection information, may provide speed optimized methods
 class Config$Type extends MessageType<Config> {
     constructor() {
         super("ruthless.v1.Config", [
-            { no: 1, name: "limits", kind: "message", T: () => Config_Limits }
+            { no: 1, name: "limits", kind: "message", T: () => Config_Limits },
+            { no: 2, name: "game", kind: "message", T: () => Config_Game }
         ]);
     }
     create(value?: PartialMessage<Config>): Config {
@@ -49,6 +63,9 @@ class Config$Type extends MessageType<Config> {
                 case /* ruthless.v1.Config.Limits limits */ 1:
                     message.limits = Config_Limits.internalBinaryRead(reader, reader.uint32(), options, message.limits);
                     break;
+                case /* ruthless.v1.Config.Game game */ 2:
+                    message.game = Config_Game.internalBinaryRead(reader, reader.uint32(), options, message.game);
+                    break;
                 default:
                     let u = options.readUnknownField;
                     if (u === "throw")
@@ -64,6 +81,9 @@ class Config$Type extends MessageType<Config> {
         /* ruthless.v1.Config.Limits limits = 1; */
         if (message.limits)
             Config_Limits.internalBinaryWrite(message.limits, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* ruthless.v1.Config.Game game = 2; */
+        if (message.game)
+            Config_Game.internalBinaryWrite(message.game, writer.tag(2, WireType.LengthDelimited).fork(), options).join();
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
@@ -121,3 +141,50 @@ class Config_Limits$Type extends MessageType<Config_Limits> {
  * @generated MessageType for protobuf message ruthless.v1.Config.Limits
  */
 export const Config_Limits = new Config_Limits$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class Config_Game$Type extends MessageType<Config_Game> {
+    constructor() {
+        super("ruthless.v1.Config.Game", [
+            { no: 1, name: "min_required_players", kind: "scalar", T: 13 /*ScalarType.UINT32*/ }
+        ]);
+    }
+    create(value?: PartialMessage<Config_Game>): Config_Game {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.minRequiredPlayers = 0;
+        if (value !== undefined)
+            reflectionMergePartial<Config_Game>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: Config_Game): Config_Game {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* uint32 min_required_players */ 1:
+                    message.minRequiredPlayers = reader.uint32();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: Config_Game, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* uint32 min_required_players = 1; */
+        if (message.minRequiredPlayers !== 0)
+            writer.tag(1, WireType.Varint).uint32(message.minRequiredPlayers);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message ruthless.v1.Config.Game
+ */
+export const Config_Game = new Config_Game$Type();

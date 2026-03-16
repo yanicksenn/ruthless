@@ -4,6 +4,7 @@ go_test(
     name = "integration_test",
     srcs = [
         "auth_test.go",
+        "card_test.go",
         "deck_test.go",
         "game_test.go",
         "main_test.go",

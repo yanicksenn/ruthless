@@ -32,7 +32,7 @@ func TestMemoryStorage_Cards(t *testing.T) {
 		t.Errorf("Retrieved card does not match original")
 	}
 
-	list, total, err := store.ListCards(ctx, 0, 0, nil)
+	list, total, err := store.ListCards(ctx, 0, 0, nil, "", nil)
 	if err != nil {
 		t.Fatalf("Failed to list cards: %v", err)
 	}
@@ -47,17 +47,17 @@ func TestMemoryStorage_Cards(t *testing.T) {
 		_ = store.CreateCard(ctx, c)
 	}
 
-	list, total, err = store.ListCards(ctx, 2, 1, nil) // First page
+	list, total, err = store.ListCards(ctx, 2, 1, nil, "", nil) // First page
 	if err != nil || len(list) != 2 || total != 6 {
 		t.Errorf("Page 1 failed: got %d cards, total %d, err %v", len(list), total, err)
 	}
 
-	list, total, err = store.ListCards(ctx, 2, 2, nil) // Second page
+	list, total, err = store.ListCards(ctx, 2, 2, nil, "", nil) // Second page
 	if err != nil || len(list) != 2 || total != 6 {
 		t.Errorf("Page 2 failed: got %d cards, total %d, err %v", len(list), total, err)
 	}
 
-	list, total, err = store.ListCards(ctx, 2, 4, nil) // Out of bounds
+	list, total, err = store.ListCards(ctx, 2, 4, nil, "", nil) // Out of bounds
 	if err != nil || len(list) != 0 || total != 6 {
 		t.Errorf("Out of bounds failed: got %d cards, total %d, err %v", len(list), total, err)
 	}
@@ -100,7 +100,7 @@ func TestMemoryStorage_Sessions(t *testing.T) {
 		t.Fatalf("Failed to get updated session: %v", err)
 	}
 
-	if len(retrieved.PlayerIds) != 1 {
-		t.Errorf("Expected 1 player, got %d", len(retrieved.PlayerIds))
+	if len(retrieved.PlayerIds) != 2 {
+		t.Errorf("Expected 2 players, got %d", len(retrieved.PlayerIds))
 	}
 }

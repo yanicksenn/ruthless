@@ -12,10 +12,11 @@ func NewPlayer(name string) *pb.Player {
 	}
 }
 
-func NewGame(sessionID string) *pb.Game {
+func NewGame(sessionID string, minPlayers uint32) *pb.Game {
 	return &pb.Game{
-		Id:        uuid.New().String(),
-		SessionId: sessionID,
-		State:     pb.GameState_GAME_STATE_WAITING,
+		Id:                 uuid.New().String(),
+		SessionId:          sessionID,
+		State:              pb.GameState_GAME_STATE_WAITING,
+		MinRequiredPlayers: minPlayers,
 	}
 }

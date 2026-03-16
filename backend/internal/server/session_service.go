@@ -17,6 +17,16 @@ func (s *Server) CreateSession(ctx context.Context, req *pb.CreateSessionRequest
 	}
 
 	session := domain.NewSession(player.Id)
+	
+	// Add initial decks
+	for _, deckID := range req.DeckIds {
+		// Verify deck exists
+		if _, err := s.store.GetDeck(ctx, deckID); err != nil {
+			return nil, status.Errorf(codes.NotFound, "deck %s not found", deckID)
+		}
+		domain.AddDeckToSession(session, deckID)
+	}
+
 	if err := s.store.CreateSession(ctx, session); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create session")
 	}
@@ -41,6 +51,26 @@ func (s *Server) JoinSession(ctx context.Context, req *pb.JoinSessionRequest) (*
 	}
 
 	return session, nil
+}
+
+func (s *Server) LeaveSession(ctx context.Context, req *pb.LeaveSessionRequest) (*pb.LeaveSessionResponse, error) {
+	session, err := s.store.GetSession(ctx, req.SessionId)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "session not found")
+	}
+
+	player, ok := getPlayer(ctx)
+	if !ok {
+		return nil, status.Errorf(codes.Unauthenticated, "unauthorized")
+	}
+
+	domain.RemovePlayerFromSession(session, player.Id)
+
+	if err := s.store.UpdateSession(ctx, session); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to update session")
+	}
+
+	return &pb.LeaveSessionResponse{}, nil
 }
 
 func (s *Server) GetSession(ctx context.Context, req *pb.GetSessionRequest) (*pb.Session, error) {

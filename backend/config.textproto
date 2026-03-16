@@ -1,3 +1,6 @@
 limits {
   card_text_limit: 280
 }
+game {
+  min_required_players: 2
+}

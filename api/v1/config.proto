@@ -8,5 +8,9 @@ message Config {
   message Limits {
     uint32 card_text_limit = 1;
   }
+  message Game {
+    uint32 min_required_players = 1;
+  }
   Limits limits = 1;
+  Game game = 2;
 }

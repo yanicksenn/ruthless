@@ -75,7 +75,9 @@ func TestServer_JoinSession(t *testing.T) {
 	srv := server.New(store, auth, &pb.Config{})
 
 	session := domain.NewSession("owner-1")
-	err := store.CreateSession(context.Background(), session)
+	err := store.CreateUser(context.Background(), &pb.User{Id: "owner-1", Name: "Owner"})
+	require.NoError(t, err)
+	err = store.CreateSession(context.Background(), session)
 	require.NoError(t, err)
 
 	player := domain.NewPlayer("Alice")
@@ -92,10 +94,10 @@ func TestServer_JoinSession(t *testing.T) {
 	resp, err := srv.JoinSession(ctx, req)
 	require.NoError(t, err)
 	assert.Equal(t, session.Id, resp.Id)
-	assert.Len(t, resp.PlayerIds, 1)
+	assert.Len(t, resp.PlayerIds, 2)
 
-	// Verify player was created in storage
-	playerID := resp.PlayerIds[0]
+	// Verify player was created in storage (Alice is the second one now)
+	playerID := resp.PlayerIds[1]
 	retrievedUser, err := store.GetUser(context.Background(), playerID)
 	require.NoError(t, err)
 	assert.Equal(t, "Alice", retrievedUser.Name)

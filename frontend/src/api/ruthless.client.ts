@@ -23,6 +23,8 @@ import type { ListSessionsRequest } from "./ruthless";
 import type { AddDeckToSessionResponse } from "./ruthless";
 import type { AddDeckToSessionRequest } from "./ruthless";
 import type { GetSessionRequest } from "./ruthless";
+import type { LeaveSessionResponse } from "./ruthless";
+import type { LeaveSessionRequest } from "./ruthless";
 import type { JoinSessionRequest } from "./ruthless";
 import type { Session } from "./ruthless";
 import type { CreateSessionRequest } from "./ruthless";
@@ -205,6 +207,10 @@ export interface ISessionServiceClient {
      */
     joinSession(input: JoinSessionRequest, options?: RpcOptions): UnaryCall<JoinSessionRequest, Session>;
     /**
+     * @generated from protobuf rpc: LeaveSession
+     */
+    leaveSession(input: LeaveSessionRequest, options?: RpcOptions): UnaryCall<LeaveSessionRequest, LeaveSessionResponse>;
+    /**
      * @generated from protobuf rpc: GetSession
      */
     getSession(input: GetSessionRequest, options?: RpcOptions): UnaryCall<GetSessionRequest, Session>;
@@ -241,24 +247,31 @@ export class SessionServiceClient implements ISessionServiceClient, ServiceInfo 
         return stackIntercept<JoinSessionRequest, Session>("unary", this._transport, method, opt, input);
     }
     /**
+     * @generated from protobuf rpc: LeaveSession
+     */
+    leaveSession(input: LeaveSessionRequest, options?: RpcOptions): UnaryCall<LeaveSessionRequest, LeaveSessionResponse> {
+        const method = this.methods[2], opt = this._transport.mergeOptions(options);
+        return stackIntercept<LeaveSessionRequest, LeaveSessionResponse>("unary", this._transport, method, opt, input);
+    }
+    /**
      * @generated from protobuf rpc: GetSession
      */
     getSession(input: GetSessionRequest, options?: RpcOptions): UnaryCall<GetSessionRequest, Session> {
-        const method = this.methods[2], opt = this._transport.mergeOptions(options);
+        const method = this.methods[3], opt = this._transport.mergeOptions(options);
         return stackIntercept<GetSessionRequest, Session>("unary", this._transport, method, opt, input);
     }
     /**
      * @generated from protobuf rpc: AddDeckToSession
      */
     addDeckToSession(input: AddDeckToSessionRequest, options?: RpcOptions): UnaryCall<AddDeckToSessionRequest, AddDeckToSessionResponse> {
-        const method = this.methods[3], opt = this._transport.mergeOptions(options);
+        const method = this.methods[4], opt = this._transport.mergeOptions(options);
         return stackIntercept<AddDeckToSessionRequest, AddDeckToSessionResponse>("unary", this._transport, method, opt, input);
     }
     /**
      * @generated from protobuf rpc: ListSessions
      */
     listSessions(input: ListSessionsRequest, options?: RpcOptions): UnaryCall<ListSessionsRequest, ListSessionsResponse> {
-        const method = this.methods[4], opt = this._transport.mergeOptions(options);
+        const method = this.methods[5], opt = this._transport.mergeOptions(options);
         return stackIntercept<ListSessionsRequest, ListSessionsResponse>("unary", this._transport, method, opt, input);
     }
 }

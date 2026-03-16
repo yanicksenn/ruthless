@@ -24,3 +24,15 @@
 @utility card-shadow {
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
 }
+
+@utility custom-scrollbar {
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    @apply bg-white/10 rounded-full hover:bg-white/20 transition-colors;
+  }
+}

@@ -138,10 +138,9 @@ func (s *Storage) GetCard(ctx context.Context, id string) (*pb.Card, error) {
 	return &c, nil
 }
 
-func (s *Storage) ListCards(ctx context.Context, pageSize, pageNumber int32, ids []string) ([]*pb.Card, int32, error) {
+func (s *Storage) ListCards(ctx context.Context, pageSize, pageNumber int32, ids []string, filter string, orderBy *pb.CardOrder) ([]*pb.Card, int32, error) {
 	var totalCount int32
-	countQuery := "SELECT COUNT(*) FROM cards"
-	dataQuery := "SELECT id, text, color, owner_id, created_at, updated_at FROM cards"
+	var whereClauses []string
 	var args []interface{}
 	argId := 1
 
@@ -152,17 +151,45 @@ func (s *Storage) ListCards(ctx context.Context, pageSize, pageNumber int32, ids
 			args = append(args, id)
 			argId++
 		}
-		whereClause := " WHERE id IN (" + strings.Join(placeholders, ", ") + ")"
-		countQuery += whereClause
-		dataQuery += whereClause
+		whereClauses = append(whereClauses, "id IN ("+strings.Join(placeholders, ", ")+")")
 	}
+
+	if filter != "" {
+		whereClauses = append(whereClauses, "text ILIKE $"+strconv.Itoa(argId))
+		args = append(args, "%"+filter+"%")
+		argId++
+	}
+
+	whereClause := ""
+	if len(whereClauses) > 0 {
+		whereClause = " WHERE " + strings.Join(whereClauses, " AND ")
+	}
+
+	countQuery := "SELECT COUNT(*) FROM cards" + whereClause
+	dataQuery := "SELECT id, text, color, owner_id, created_at, updated_at FROM cards" + whereClause
 
 	err := s.db.QueryRowContext(ctx, countQuery, args...).Scan(&totalCount)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	dataQuery += " ORDER BY id"
+	orderClause := " ORDER BY id"
+	if orderBy != nil {
+		column := "id"
+		switch orderBy.Field {
+		case pb.CardOrderField_CARD_ORDER_FIELD_TEXT:
+			column = "text"
+		case pb.CardOrderField_CARD_ORDER_FIELD_CREATED_AT:
+			column = "created_at"
+		}
+		dir := "ASC"
+		if orderBy.Descending {
+			dir = "DESC"
+		}
+		orderClause = fmt.Sprintf(" ORDER BY %s %s, id ASC", column, dir)
+	}
+	dataQuery += orderClause
+
 	if pageSize > 0 {
 		dataQuery += " LIMIT $" + strconv.Itoa(argId) + " OFFSET $" + strconv.Itoa(argId+1)
 		args = append(args, pageSize, (pageNumber-1)*pageSize)

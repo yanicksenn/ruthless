@@ -231,9 +231,24 @@ export interface Game {
      * @generated from protobuf field: google.protobuf.Timestamp created_at = 11
      */
     createdAt?: Timestamp;
+    /**
+     * @generated from protobuf field: uint32 min_required_players = 12
+     */
+    minRequiredPlayers: number;
 }
-// ----------------- Card Service -----------------
-
+/**
+ * @generated from protobuf message ruthless.v1.CardOrder
+ */
+export interface CardOrder {
+    /**
+     * @generated from protobuf field: ruthless.v1.CardOrderField field = 1
+     */
+    field: CardOrderField;
+    /**
+     * @generated from protobuf field: bool descending = 2
+     */
+    descending: boolean;
+}
 /**
  * @generated from protobuf message ruthless.v1.ListCardsRequest
  */
@@ -250,6 +265,14 @@ export interface ListCardsRequest {
      * @generated from protobuf field: repeated string ids = 3
      */
     ids: string[];
+    /**
+     * @generated from protobuf field: string filter = 4
+     */
+    filter: string;
+    /**
+     * @generated from protobuf field: ruthless.v1.CardOrder order_by = 5
+     */
+    orderBy?: CardOrder;
 }
 /**
  * @generated from protobuf message ruthless.v1.ListCardsResponse
@@ -394,6 +417,10 @@ export interface RemoveCardFromDeckResponse {
  * @generated from protobuf message ruthless.v1.CreateSessionRequest
  */
 export interface CreateSessionRequest {
+    /**
+     * @generated from protobuf field: repeated string deck_ids = 1
+     */
+    deckIds: string[];
 }
 /**
  * @generated from protobuf message ruthless.v1.JoinSessionRequest
@@ -448,6 +475,20 @@ export interface ListSessionsResponse {
      * @generated from protobuf field: repeated ruthless.v1.Session sessions = 1
      */
     sessions: Session[];
+}
+/**
+ * @generated from protobuf message ruthless.v1.LeaveSessionRequest
+ */
+export interface LeaveSessionRequest {
+    /**
+     * @generated from protobuf field: string session_id = 1
+     */
+    sessionId: string;
+}
+/**
+ * @generated from protobuf message ruthless.v1.LeaveSessionResponse
+ */
+export interface LeaveSessionResponse {
 }
 // ----------------- User Service -----------------
 
@@ -598,6 +639,25 @@ export enum GameState {
      * @generated from protobuf enum value: GAME_STATE_FINISHED = 4;
      */
     FINISHED = 4
+}
+// ----------------- Card Service -----------------
+
+/**
+ * @generated from protobuf enum ruthless.v1.CardOrderField
+ */
+export enum CardOrderField {
+    /**
+     * @generated from protobuf enum value: CARD_ORDER_FIELD_UNSPECIFIED = 0;
+     */
+    UNSPECIFIED = 0,
+    /**
+     * @generated from protobuf enum value: CARD_ORDER_FIELD_TEXT = 1;
+     */
+    TEXT = 1,
+    /**
+     * @generated from protobuf enum value: CARD_ORDER_FIELD_CREATED_AT = 2;
+     */
+    CREATED_AT = 2
 }
 // @generated message type with reflection information, may provide speed optimized methods
 class Card$Type extends MessageType<Card> {
@@ -1187,7 +1247,8 @@ class Game$Type extends MessageType<Game> {
             { no: 8, name: "hidden_white_deck", kind: "message", repeat: 2 /*RepeatType.UNPACKED*/, T: () => Card },
             { no: 9, name: "players", kind: "message", repeat: 2 /*RepeatType.UNPACKED*/, T: () => Player },
             { no: 10, name: "player_ids", kind: "scalar", repeat: 2 /*RepeatType.UNPACKED*/, T: 9 /*ScalarType.STRING*/ },
-            { no: 11, name: "created_at", kind: "message", T: () => Timestamp }
+            { no: 11, name: "created_at", kind: "message", T: () => Timestamp },
+            { no: 12, name: "min_required_players", kind: "scalar", T: 13 /*ScalarType.UINT32*/ }
         ]);
     }
     create(value?: PartialMessage<Game>): Game {
@@ -1202,6 +1263,7 @@ class Game$Type extends MessageType<Game> {
         message.hiddenWhiteDeck = [];
         message.players = [];
         message.playerIds = [];
+        message.minRequiredPlayers = 0;
         if (value !== undefined)
             reflectionMergePartial<Game>(this, message, value);
         return message;
@@ -1243,6 +1305,9 @@ class Game$Type extends MessageType<Game> {
                     break;
                 case /* google.protobuf.Timestamp created_at */ 11:
                     message.createdAt = Timestamp.internalBinaryRead(reader, reader.uint32(), options, message.createdAt);
+                    break;
+                case /* uint32 min_required_players */ 12:
+                    message.minRequiredPlayers = reader.uint32();
                     break;
                 default:
                     let u = options.readUnknownField;
@@ -1325,6 +1390,9 @@ class Game$Type extends MessageType<Game> {
         /* google.protobuf.Timestamp created_at = 11; */
         if (message.createdAt)
             Timestamp.internalBinaryWrite(message.createdAt, writer.tag(11, WireType.LengthDelimited).fork(), options).join();
+        /* uint32 min_required_players = 12; */
+        if (message.minRequiredPlayers !== 0)
+            writer.tag(12, WireType.Varint).uint32(message.minRequiredPlayers);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
@@ -1336,12 +1404,69 @@ class Game$Type extends MessageType<Game> {
  */
 export const Game = new Game$Type();
 // @generated message type with reflection information, may provide speed optimized methods
+class CardOrder$Type extends MessageType<CardOrder> {
+    constructor() {
+        super("ruthless.v1.CardOrder", [
+            { no: 1, name: "field", kind: "enum", T: () => ["ruthless.v1.CardOrderField", CardOrderField, "CARD_ORDER_FIELD_"] },
+            { no: 2, name: "descending", kind: "scalar", T: 8 /*ScalarType.BOOL*/ }
+        ]);
+    }
+    create(value?: PartialMessage<CardOrder>): CardOrder {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.field = 0;
+        message.descending = false;
+        if (value !== undefined)
+            reflectionMergePartial<CardOrder>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: CardOrder): CardOrder {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* ruthless.v1.CardOrderField field */ 1:
+                    message.field = reader.int32();
+                    break;
+                case /* bool descending */ 2:
+                    message.descending = reader.bool();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: CardOrder, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* ruthless.v1.CardOrderField field = 1; */
+        if (message.field !== 0)
+            writer.tag(1, WireType.Varint).int32(message.field);
+        /* bool descending = 2; */
+        if (message.descending !== false)
+            writer.tag(2, WireType.Varint).bool(message.descending);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message ruthless.v1.CardOrder
+ */
+export const CardOrder = new CardOrder$Type();
+// @generated message type with reflection information, may provide speed optimized methods
 class ListCardsRequest$Type extends MessageType<ListCardsRequest> {
     constructor() {
         super("ruthless.v1.ListCardsRequest", [
             { no: 1, name: "page_size", kind: "scalar", T: 5 /*ScalarType.INT32*/ },
             { no: 2, name: "page_number", kind: "scalar", T: 5 /*ScalarType.INT32*/ },
-            { no: 3, name: "ids", kind: "scalar", repeat: 2 /*RepeatType.UNPACKED*/, T: 9 /*ScalarType.STRING*/ }
+            { no: 3, name: "ids", kind: "scalar", repeat: 2 /*RepeatType.UNPACKED*/, T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "filter", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "order_by", kind: "message", T: () => CardOrder }
         ]);
     }
     create(value?: PartialMessage<ListCardsRequest>): ListCardsRequest {
@@ -1349,6 +1474,7 @@ class ListCardsRequest$Type extends MessageType<ListCardsRequest> {
         message.pageSize = 0;
         message.pageNumber = 0;
         message.ids = [];
+        message.filter = "";
         if (value !== undefined)
             reflectionMergePartial<ListCardsRequest>(this, message, value);
         return message;
@@ -1366,6 +1492,12 @@ class ListCardsRequest$Type extends MessageType<ListCardsRequest> {
                     break;
                 case /* repeated string ids */ 3:
                     message.ids.push(reader.string());
+                    break;
+                case /* string filter */ 4:
+                    message.filter = reader.string();
+                    break;
+                case /* ruthless.v1.CardOrder order_by */ 5:
+                    message.orderBy = CardOrder.internalBinaryRead(reader, reader.uint32(), options, message.orderBy);
                     break;
                 default:
                     let u = options.readUnknownField;
@@ -1388,6 +1520,12 @@ class ListCardsRequest$Type extends MessageType<ListCardsRequest> {
         /* repeated string ids = 3; */
         for (let i = 0; i < message.ids.length; i++)
             writer.tag(3, WireType.LengthDelimited).string(message.ids[i]);
+        /* string filter = 4; */
+        if (message.filter !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.filter);
+        /* ruthless.v1.CardOrder order_by = 5; */
+        if (message.orderBy)
+            CardOrder.internalBinaryWrite(message.orderBy, writer.tag(5, WireType.LengthDelimited).fork(), options).join();
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
@@ -2101,10 +2239,13 @@ export const RemoveCardFromDeckResponse = new RemoveCardFromDeckResponse$Type();
 // @generated message type with reflection information, may provide speed optimized methods
 class CreateSessionRequest$Type extends MessageType<CreateSessionRequest> {
     constructor() {
-        super("ruthless.v1.CreateSessionRequest", []);
+        super("ruthless.v1.CreateSessionRequest", [
+            { no: 1, name: "deck_ids", kind: "scalar", repeat: 2 /*RepeatType.UNPACKED*/, T: 9 /*ScalarType.STRING*/ }
+        ]);
     }
     create(value?: PartialMessage<CreateSessionRequest>): CreateSessionRequest {
         const message = globalThis.Object.create((this.messagePrototype!));
+        message.deckIds = [];
         if (value !== undefined)
             reflectionMergePartial<CreateSessionRequest>(this, message, value);
         return message;
@@ -2114,6 +2255,9 @@ class CreateSessionRequest$Type extends MessageType<CreateSessionRequest> {
         while (reader.pos < end) {
             let [fieldNo, wireType] = reader.tag();
             switch (fieldNo) {
+                case /* repeated string deck_ids */ 1:
+                    message.deckIds.push(reader.string());
+                    break;
                 default:
                     let u = options.readUnknownField;
                     if (u === "throw")
@@ -2126,6 +2270,9 @@ class CreateSessionRequest$Type extends MessageType<CreateSessionRequest> {
         return message;
     }
     internalBinaryWrite(message: CreateSessionRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* repeated string deck_ids = 1; */
+        for (let i = 0; i < message.deckIds.length; i++)
+            writer.tag(1, WireType.LengthDelimited).string(message.deckIds[i]);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
@@ -2416,6 +2563,91 @@ class ListSessionsResponse$Type extends MessageType<ListSessionsResponse> {
  * @generated MessageType for protobuf message ruthless.v1.ListSessionsResponse
  */
 export const ListSessionsResponse = new ListSessionsResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class LeaveSessionRequest$Type extends MessageType<LeaveSessionRequest> {
+    constructor() {
+        super("ruthless.v1.LeaveSessionRequest", [
+            { no: 1, name: "session_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<LeaveSessionRequest>): LeaveSessionRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.sessionId = "";
+        if (value !== undefined)
+            reflectionMergePartial<LeaveSessionRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: LeaveSessionRequest): LeaveSessionRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string session_id */ 1:
+                    message.sessionId = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: LeaveSessionRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string session_id = 1; */
+        if (message.sessionId !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.sessionId);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message ruthless.v1.LeaveSessionRequest
+ */
+export const LeaveSessionRequest = new LeaveSessionRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class LeaveSessionResponse$Type extends MessageType<LeaveSessionResponse> {
+    constructor() {
+        super("ruthless.v1.LeaveSessionResponse", []);
+    }
+    create(value?: PartialMessage<LeaveSessionResponse>): LeaveSessionResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        if (value !== undefined)
+            reflectionMergePartial<LeaveSessionResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: LeaveSessionResponse): LeaveSessionResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: LeaveSessionResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message ruthless.v1.LeaveSessionResponse
+ */
+export const LeaveSessionResponse = new LeaveSessionResponse$Type();
 // @generated message type with reflection information, may provide speed optimized methods
 class RegisterRequest$Type extends MessageType<RegisterRequest> {
     constructor() {
@@ -2995,6 +3227,7 @@ export const DeckService = new ServiceType("ruthless.v1.DeckService", [
 export const SessionService = new ServiceType("ruthless.v1.SessionService", [
     { name: "CreateSession", options: {}, I: CreateSessionRequest, O: Session },
     { name: "JoinSession", options: {}, I: JoinSessionRequest, O: Session },
+    { name: "LeaveSession", options: {}, I: LeaveSessionRequest, O: LeaveSessionResponse },
     { name: "GetSession", options: {}, I: GetSessionRequest, O: Session },
     { name: "AddDeckToSession", options: {}, I: AddDeckToSessionRequest, O: AddDeckToSessionResponse },
     { name: "ListSessions", options: {}, I: ListSessionsRequest, O: ListSessionsResponse }

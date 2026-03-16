@@ -10,7 +10,7 @@ import (
 
 func TestGame_NewGame(t *testing.T) {
 	sessionID := "session-123"
-	game := domain.NewGame(sessionID)
+	game := domain.NewGame(sessionID, 2)
 
 	assert.NotEmpty(t, game.Id)
 	assert.Equal(t, sessionID, game.SessionId)

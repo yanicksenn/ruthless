@@ -3,6 +3,9 @@ import { sessionClient, createOptions } from '../api/client';
 import { Session } from '../api/ruthless';
 import { useAuth } from '../context/AuthContext';
 import { Plus, Play, Users, Hash, LogOut } from 'lucide-react';
+import { deckClient } from '../api/client';
+import { Deck } from '../api/ruthless';
+import { SessionCreationDialog } from './SessionCreationDialog';
 
 interface LobbyProps {
   onJoinSession: (sessionId: string) => void;
@@ -11,31 +14,52 @@ interface LobbyProps {
 export const Lobby: React.FC<LobbyProps> = ({ onJoinSession }) => {
   const { token, user, logout } = useAuth();
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [decks, setDecks] = useState<Deck[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-  const fetchSessions = async () => {
+  const fetchData = async () => {
     try {
-      const response = await sessionClient.listSessions({}, createOptions(token));
-      setSessions(response.response.sessions);
+      const [sessionsRes, decksRes] = await Promise.all([
+        sessionClient.listSessions({}, createOptions(token)),
+        deckClient.listDecks({}, createOptions(token))
+      ]);
+      setSessions(sessionsRes.response.sessions);
+      setDecks(decksRes.response.decks || []);
     } catch (err) {
-      console.error('Failed to list sessions:', err);
+      console.error('Failed to fetch data:', err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchSessions();
-    const interval = setInterval(fetchSessions, 5000); // Poll every 5s
+    fetchData();
+    const interval = setInterval(fetchData, 5000); // Poll every 5s
     return () => clearInterval(interval);
   }, [token]);
 
-  const handleCreateSession = async () => {
+  const handleJoinSession = async (sessionId: string) => {
     try {
-      const response = await sessionClient.createSession({}, createOptions(token));
+      await sessionClient.joinSession({ 
+        sessionId,
+        playerName: user?.name || ''
+      }, createOptions(token));
+      onJoinSession(sessionId);
+    } catch (err) {
+      console.error('Failed to join session:', err);
+      alert('Failed to join session');
+    }
+  };
+
+  const handleCreateSession = async (deckIds: string[]) => {
+    try {
+      const response = await sessionClient.createSession({ deckIds }, createOptions(token));
+      setIsCreateModalOpen(false);
       onJoinSession(response.response.id);
     } catch (err) {
       console.error('Failed to create session:', err);
+      alert('Failed to create session');
     }
   };
 
@@ -56,7 +80,7 @@ export const Lobby: React.FC<LobbyProps> = ({ onJoinSession }) => {
         </div>
         <div className="flex gap-3">
           <button
-            onClick={handleCreateSession}
+            onClick={() => setIsCreateModalOpen(true)}
             className="bg-secondary hover:bg-secondary/80 text-black font-black px-6 py-3 rounded-2xl flex items-center gap-2 transition-all transform hover:scale-105 shadow-lg shadow-secondary/10"
           >
             <Plus size={20} />
@@ -82,7 +106,7 @@ export const Lobby: React.FC<LobbyProps> = ({ onJoinSession }) => {
             <div
               key={session.id}
               className="glass p-6 rounded-2xl hover:border-primary/50 transition-all cursor-pointer group"
-              onClick={() => onJoinSession(session.id)}
+              onClick={() => handleJoinSession(session.id)}
             >
               <div className="flex justify-between items-start mb-4">
                 <div className="flex items-center gap-2 text-primary">
@@ -123,6 +147,12 @@ export const Lobby: React.FC<LobbyProps> = ({ onJoinSession }) => {
           )}
         </div>
       )}
+      <SessionCreationDialog
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onCreate={handleCreateSession}
+        decks={decks}
+      />
     </div>
   );
 };

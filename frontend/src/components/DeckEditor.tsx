@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Plus, Trash2, ArrowLeft } from 'lucide-react';
+import { Plus, Trash2, ArrowLeft, Search } from 'lucide-react';
 import { cardClient, deckClient, createOptions } from '../api/client';
 import { Card, Deck } from '../api/ruthless';
 
@@ -20,6 +20,7 @@ export const DeckEditor: React.FC<DeckEditorProps> = ({ deckId, onBack }) => {
   
   const [pageNumber, setPageNumber] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [filter, setFilter] = useState('');
   const pageSize = 12;
 
   const fetchDeckAndCards = async () => {
@@ -33,7 +34,8 @@ export const DeckEditor: React.FC<DeckEditorProps> = ({ deckId, onBack }) => {
         const cardsRes = await cardClient.listCards({ 
           pageSize: 0, 
           pageNumber: 0, 
-          ids: currentDeck.cardIds 
+          ids: currentDeck.cardIds,
+          filter: ''
         }, createOptions(token));
         setDeckCards(cardsRes.response.cards || []);
       } else {
@@ -52,7 +54,8 @@ export const DeckEditor: React.FC<DeckEditorProps> = ({ deckId, onBack }) => {
       const cardsRes = await cardClient.listCards({ 
         pageSize, 
         pageNumber, 
-        ids: [] 
+        ids: [],
+        filter
       }, createOptions(token));
       setAvailableCards(cardsRes.response.cards || []);
       setTotalCount(cardsRes.response.totalCount);
@@ -69,7 +72,12 @@ export const DeckEditor: React.FC<DeckEditorProps> = ({ deckId, onBack }) => {
 
   useEffect(() => {
     fetchAvailableCards();
-  }, [token, pageNumber]);
+  }, [token, pageNumber, filter]);
+
+  // Reset to first page when filter changes
+  useEffect(() => {
+    setPageNumber(1);
+  }, [filter]);
 
   const handleAddCard = async (cardId: string) => {
     try {
@@ -186,9 +194,22 @@ export const DeckEditor: React.FC<DeckEditorProps> = ({ deckId, onBack }) => {
              </div>
           )}
 
-          <div className="mb-8">
-            <h2 className="text-2xl font-black text-white tracking-tight">Available Cards</h2>
-            <p className="text-gray-500 text-xs font-bold uppercase tracking-widest">Add to your deck</p>
+          <div className="mb-8 space-y-4">
+            <div>
+              <h2 className="text-2xl font-black text-white tracking-tight">Available Cards</h2>
+              <p className="text-gray-500 text-xs font-bold uppercase tracking-widest">Add to your deck</p>
+            </div>
+
+            <div className="relative group/search text-white">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-hover/search:text-primary transition-colors" size={16} />
+              <input
+                type="text"
+                placeholder="Filter available cards..."
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl py-2 pl-12 pr-4 text-sm font-medium placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all"
+              />
+            </div>
           </div>
 
           <div className="space-y-4 mb-8">
