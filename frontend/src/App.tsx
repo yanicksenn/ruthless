@@ -7,10 +7,11 @@ import { Decks } from './components/Decks';
 import { Cards } from './components/Cards';
 import { LayoutDashboard, Library, Layers } from 'lucide-react';
 
+
 function App() {
   const { user, loading } = useAuth();
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
-  const [view, setView] = useState<'sessions' | 'decks' | 'cards'>('sessions');
+  const [view, setView] = useState<'sessions' | 'decks' | 'cards' | 'game'>('sessions');
 
   if (loading) {
     return (
@@ -20,18 +21,19 @@ function App() {
     );
   }
 
-  if (!user) {
+  if (!user || user.pendingCompletion) {
     return <Login />;
   }
 
-  if (activeSessionId) {
-    return (
-      <GameBoard 
-        sessionId={activeSessionId} 
-        onLeave={() => setActiveSessionId(null)} 
-      />
-    );
-  }
+  const handleJoinSession = (id: string) => {
+    setActiveSessionId(id);
+    setView('game');
+  };
+
+  const handleLeaveSession = () => {
+    setActiveSessionId(null);
+    setView('sessions');
+  };
 
   return (
     <main className="min-h-screen">
@@ -46,6 +48,7 @@ function App() {
           <LayoutDashboard size={16} />
           SESSIONS
         </button>
+
         <button
           onClick={() => setView('decks')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all ${
@@ -68,15 +71,31 @@ function App() {
 
       <div className="pb-24">
         {view === 'sessions' ? (
-          <Lobby onJoinSession={setActiveSessionId} />
+          <Lobby 
+            onJoinSession={handleJoinSession} 
+            activeSessionId={activeSessionId}
+          />
+        ) : view === 'game' && activeSessionId ? (
+          <GameBoard 
+            sessionId={activeSessionId} 
+            onBack={() => setView('sessions')}
+            onLeave={handleLeaveSession}
+          />
         ) : view === 'decks' ? (
           <Decks />
-        ) : (
+        ) : view === 'cards' ? (
           <Cards />
+        ) : (
+          /* Fallback if somehow in game view without active session */
+          <Lobby 
+            onJoinSession={handleJoinSession} 
+            activeSessionId={activeSessionId}
+          />
         )}
       </div>
     </main>
   );
 }
+
 
 export default App;

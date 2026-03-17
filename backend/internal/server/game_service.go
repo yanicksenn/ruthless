@@ -11,8 +11,8 @@ import (
 	"github.com/yanicksenn/ruthless/backend/internal/domain"
 )
 
-func (s *Server) CreateGame(ctx context.Context, req *pb.CreateGameRequest) (*pb.Game, error) {
-	session, err := s.store.GetSession(ctx, req.SessionId)
+func (s *Server) createGameInternal(ctx context.Context, sessionID string) (*pb.Game, error) {
+	session, err := s.store.GetSession(ctx, sessionID)
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, "session not found")
 	}
@@ -22,7 +22,7 @@ func (s *Server) CreateGame(ctx context.Context, req *pb.CreateGameRequest) (*pb
 		minPlayers = int(s.config.Game.MinRequiredPlayers)
 	}
 
-	game := domain.NewGame(req.SessionId, uint32(minPlayers))
+	game := domain.NewGame(sessionID, uint32(minPlayers))
 	if err := s.syncGamePlayers(ctx, game, session); err != nil {
 		return nil, err
 	}
@@ -36,6 +36,7 @@ func (s *Server) CreateGame(ctx context.Context, req *pb.CreateGameRequest) (*pb
 	}
 	return game, nil
 }
+
 
 func (s *Server) GetGame(ctx context.Context, req *pb.GetGameRequest) (*pb.Game, error) {
 	game, err := s.store.GetGame(ctx, req.Id)

@@ -17,6 +17,8 @@ func runDeckTests(t *testing.T, ctx context.Context, c *testutil.TestClient, run
 	bobCtx := c.GetAuthContext(ctx, bobName)
 	_, err := c.UserClient.Register(bobCtx, &pb.RegisterRequest{})
 	testutil.AssertSuccess(t, err, "Register Bob (Fake)")
+	_, err = c.UserClient.CompleteRegistration(bobCtx, &pb.CompleteRegistrationRequest{Name: bobName})
+	testutil.AssertSuccess(t, err, "CompleteRegistration Bob (Fake)")
 
 	t.Log("\n--- Deck & Card Suite ---")
 
@@ -70,6 +72,7 @@ func runDeckTests(t *testing.T, ctx context.Context, c *testutil.TestClient, run
 	// 9. FAILURE: Non-contributor Charlie tries to remove card
 	t.Log("  [RUN] Charlie tries to remove Bob's card...")
 	_, _ = c.UserClient.Register(charlieCtx, &pb.RegisterRequest{}) // Register charlie now
+	_, _ = c.UserClient.CompleteRegistration(charlieCtx, &pb.CompleteRegistrationRequest{Name: charlieName})
 	_, err = c.DeckClient.RemoveCardFromDeck(charlieCtx, &pb.RemoveCardFromDeckRequest{DeckId: deck.Id, CardId: bobCard.Id})
 	testutil.AssertError(t, err, codes.PermissionDenied, "not authorized")
 

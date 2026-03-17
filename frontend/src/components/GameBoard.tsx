@@ -2,16 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { gameClient, sessionClient, deckClient, createOptions } from '../api/client';
 import { Game, GameState, Card, Session } from '../api/ruthless';
 import { useAuth } from '../context/AuthContext';
-import { ArrowLeft, Play, Crown, Check, Info, Users, Layers } from 'lucide-react';
+import { ArrowLeft, Play, Crown, Check, Info, Users, Layers, LogOut } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface GameBoardProps {
   sessionId: string;
+  onBack: () => void;
   onLeave: () => void;
 }
 
-export const GameBoard: React.FC<GameBoardProps> = ({ sessionId, onLeave }) => {
+export const GameBoard: React.FC<GameBoardProps> = ({ sessionId, onBack, onLeave }) => {
   const { token, user } = useAuth();
+
   const [session, setSession] = useState<Session | null>(null);
   const [game, setGame] = useState<Game | null>(null);
   const [hand, setHand] = useState<Card[]>([]);
@@ -40,7 +42,9 @@ export const GameBoard: React.FC<GameBoardProps> = ({ sessionId, onLeave }) => {
         setGame(null);
       }
 
-      if (isOwner && !game) {
+      // Fetch decks if owner and game is in WAITING state (or not yet fetched/null)
+      // The game is now created automatically with the session, so it will be in WAITING state.
+      if (isOwner && (game === null || game.state === GameState.WAITING)) {
         const dResponse = await deckClient.listDecks({}, createOptions(token));
         setDecks(dResponse.response.decks.map(d => ({ id: d.id, name: d.name })));
       }
@@ -57,12 +61,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({ sessionId, onLeave }) => {
     return () => clearInterval(interval);
   }, [sessionId, token, user?.id]);
 
-  const handleCreateGame = async () => {
-    try {
-      await gameClient.createGame({ sessionId }, createOptions(token));
-      fetchData();
-    } catch (err) { console.error(err); }
-  };
+  /* handleCreateGame removed - game is created automatically with session */
+
 
   const handleStartGame = async () => {
     if (!game) return;
@@ -148,12 +148,24 @@ export const GameBoard: React.FC<GameBoardProps> = ({ sessionId, onLeave }) => {
     <div className="min-h-screen flex flex-col">
       {/* Top Bar */}
       <nav className="glass border-b border-white/5 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
-        <div>
-          {(!game || game.state === GameState.WAITING) && (
-            <button onClick={handleLeave} className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
-              <ArrowLeft size={18} /> <span className="font-bold text-xs uppercase tracking-widest">Quit to Lobby</span>
-            </button>
-          )}
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={onBack} 
+            className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+            title="Return to lobby without leaving session"
+          >
+            <ArrowLeft size={18} /> <span className="font-bold text-xs uppercase tracking-widest">Back to Lobby</span>
+          </button>
+          
+          <div className="h-4 w-px bg-white/10 mx-2" />
+          
+          <button 
+            onClick={handleLeave} 
+            className="flex items-center gap-2 text-red-500/60 hover:text-red-500 transition-colors"
+            title="Leave session entirely"
+          >
+            <LogOut size={16} /> <span className="font-bold text-[10px] uppercase tracking-tighter">Leave Session</span>
+          </button>
         </div>
         <div className="flex items-center gap-6">
            <div className="flex items-center gap-2">
@@ -168,88 +180,77 @@ export const GameBoard: React.FC<GameBoardProps> = ({ sessionId, onLeave }) => {
         </div>
       </nav>
 
+
       <main className="flex-1 p-6 md:p-12">
         {!game ? (
-          <div className="max-w-2xl mx-auto space-y-8 mt-12">
-             <div className="text-center">
-               <h2 className="text-4xl font-black mb-2 tracking-tighter uppercase">Preparation</h2>
-               <p className="text-gray-400 font-bold tracking-widest uppercase text-xs italic">Waiting for the host to summon the cards</p>
-             </div>
-             
-             {isOwner ? (
-                <div className="glass p-8 rounded-3xl space-y-8 card-shadow">
-                   <div className="space-y-4">
-                     <h3 className="flex items-center gap-2 font-black uppercase text-sm tracking-widest text-primary">
-                       <Layers size={18} /> Select Decks ({session?.deckIds.length || 0})
-                     </h3>
-                     <div className="grid grid-cols-2 gap-2">
-                        {decks.map(d => (
-                          <button 
-                            key={d.id} 
-                            onClick={() => handleAddDeck(d.id)}
-                            disabled={session?.deckIds.includes(d.id)}
-                            className={`p-3 rounded-xl border text-sm font-bold transition-all text-left flex justify-between items-center ${
-                              session?.deckIds.includes(d.id) 
-                              ? 'bg-primary/20 border-primary/40 text-primary' 
-                              : 'bg-white/5 border-white/10 hover:border-white/20'
-                            }`}
-                          >
-                            {d.name}
-                            {session?.deckIds.includes(d.id) && <Check size={14} />}
-                          </button>
-                        ))}
-                     </div>
-                   </div>
-                   
-                   <button 
-                     onClick={handleCreateGame} 
-                     disabled={!session?.deckIds.length}
-                     className="w-full bg-primary hover:bg-primary-dark disabled:opacity-50 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 transition-transform active:scale-95"
-                   >
-                     <Play size={20} fill="currentColor" /> CREATE GAME
-                   </button>
-                </div>
-             ) : (
-                <div className="glass p-12 rounded-3xl text-center border-dashed border-2 border-white/10">
-                   <div className="animate-pulse flex flex-col items-center gap-4">
-                      <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center border border-white/10">
-                        <Users size={32} className="text-gray-500" />
-                      </div>
-                      <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">Waiting for {session?.ownerId.split('-')[0]}...</p>
-                   </div>
-                </div>
-             )}
+          <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-primary"></div>
+             <p className="text-gray-500 font-bold uppercase tracking-widest text-xs">Summoning the Session...</p>
           </div>
         ) : game.state === GameState.WAITING ? (
-           <div className="max-w-md mx-auto mt-24 text-center space-y-8">
-              <div className="glass p-12 rounded-3xl space-y-8 border-primary/20 border-2">
-                 <div className="flex justify-center">
-                    <div className="bg-primary/20 p-4 rounded-full border border-primary/40 text-primary">
-                       <Play size={40} fill="currentColor" />
+           <div className="max-w-2xl mx-auto mt-12 space-y-8">
+              <div className="text-center">
+                <h2 className="text-4xl font-black mb-2 tracking-tighter uppercase">Lobby</h2>
+                <p className="text-gray-400 font-bold tracking-widest uppercase text-xs italic">Gather your friends for the chaos</p>
+              </div>
+
+              <div className="glass p-8 rounded-3xl space-y-8 border-primary/20 border-2">
+                 <div className="flex justify-between items-start">
+                    <div>
+                        <h3 className="text-2xl font-black mb-1">READY TO START?</h3>
+                        <p className="text-gray-400 text-sm font-bold uppercase tracking-wider">
+                          {session?.playerIds.length || 0} Players Joined
+                        </p>
+                    </div>
+                    <div className="bg-primary/20 p-3 rounded-full border border-primary/40 text-primary">
+                       <Play size={24} fill="currentColor" />
                     </div>
                  </div>
-                 <div>
-                    <h2 className="text-3xl font-black mb-2">READY TO START?</h2>
-                    <p className="text-gray-400 text-sm font-bold uppercase tracking-wider">
-                      {session?.playerIds.length || 0} Players Joined
-                    </p>
-                    {game.minRequiredPlayers > (session?.playerIds.length || 0) && (
-                      <div className="mt-4 flex items-center justify-center gap-2 text-red-500 font-bold bg-red-500/10 p-2 rounded-xl border border-red-500/20">
-                        <Info size={16} />
-                        <span className="text-xs uppercase tracking-tight">Need {game.minRequiredPlayers - (session?.playerIds.length || 0)} more to start</span>
+
+                 {game.minRequiredPlayers > (session?.playerIds.length || 0) && (
+                   <div className="flex items-center justify-center gap-2 text-red-500 font-bold bg-red-500/10 p-3 rounded-xl border border-red-500/20">
+                     <Info size={16} />
+                     <span className="text-xs uppercase tracking-tight">Need {game.minRequiredPlayers - (session?.playerIds.length || 0)} more players to start</span>
+                   </div>
+                 )}
+                 
+                 {isOwner && (
+                    <div className="space-y-4 pt-4 border-t border-white/5">
+                      <h3 className="flex items-center gap-2 font-black uppercase text-xs tracking-widest text-gray-500">
+                        <Layers size={14} /> Active Decks ({session?.deckIds.length || 0})
+                      </h3>
+                      <div className="grid grid-cols-2 gap-2">
+                         {decks.map(d => (
+                           <button 
+                             key={d.id} 
+                             onClick={() => handleAddDeck(d.id)}
+                             disabled={session?.deckIds.includes(d.id)}
+                             className={`p-3 rounded-xl border text-xs font-bold transition-all text-left flex justify-between items-center ${
+                               session?.deckIds.includes(d.id) 
+                               ? 'bg-primary/20 border-primary/40 text-primary' 
+                               : 'bg-white/5 border-white/10 hover:border-white/20'
+                             }`}
+                           >
+                             <span className="truncate mr-2">{d.name}</span>
+                             {session?.deckIds.includes(d.id) && <Check size={12} />}
+                           </button>
+                         ))}
                       </div>
-                    )}
-                 </div>
+                    </div>
+                 )}
+
                  {isOwner ? (
                     <button 
                       onClick={handleStartGame} 
-                      disabled={(session?.playerIds.length || 0) < game.minRequiredPlayers}
-                      className="w-full bg-primary hover:bg-primary-dark disabled:opacity-30 disabled:cursor-not-allowed text-white font-black py-4 rounded-2xl transition-all"
+                      disabled={(session?.playerIds.length || 0) < game.minRequiredPlayers || !session?.deckIds.length}
+                      className="w-full bg-primary hover:bg-primary-dark disabled:opacity-30 disabled:cursor-not-allowed text-white font-black py-4 rounded-2xl transition-all shadow-lg shadow-primary/20"
                     >
-                      START FIRST ROUND
+                      {!session?.deckIds.length ? "SELECT AT LEAST ONE DECK" : "START FIRST ROUND"}
                     </button>
                  ) : (
-                    <p className="text-primary font-bold animate-bounce">Host is about to start...</p>
+                    <div className="text-center py-4">
+                        <p className="text-primary font-black uppercase tracking-widest text-sm animate-pulse">Waiting for host to start...</p>
+                    </div>
                  )}
               </div>
            </div>

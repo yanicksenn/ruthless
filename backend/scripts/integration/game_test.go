@@ -18,6 +18,8 @@ func runGameTests(t *testing.T, ctx context.Context, c *testutil.TestClient, run
 	bobCtx := c.GetAuthContext(ctx, bobName)
 	_, err := c.UserClient.Register(bobCtx, &pb.RegisterRequest{})
 	testutil.AssertSuccess(t, err, "Register Bob (Fake)")
+	_, err = c.UserClient.CompleteRegistration(bobCtx, &pb.CompleteRegistrationRequest{Name: bobName})
+	testutil.AssertSuccess(t, err, "CompleteRegistration Bob (Fake)")
 
 	t.Log("\n--- Session & Game Flow Suite ---")
 
@@ -67,18 +69,21 @@ func runGameTests(t *testing.T, ctx context.Context, c *testutil.TestClient, run
 	_, err = c.SessionClient.JoinSession(bobCtx, &pb.JoinSessionRequest{SessionId: session.Id})
 	testutil.AssertSuccess(t, err, "Bob Join again")
 
-	// 4. Create Game
-	t.Log("  [RUN] Alice creates game...")
-	game, err := c.GameClient.CreateGame(aliceCtx, &pb.CreateGameRequest{SessionId: session.Id})
-	testutil.AssertSuccess(t, err, "CreateGame")
+	// 4. Verify Game was created automatically
+	t.Log("  [RUN] Alice verifies game was created automatically...")
+	game, err := c.GameClient.GetGameBySession(aliceCtx, &pb.GetGameBySessionRequest{SessionId: session.Id})
+	testutil.AssertSuccess(t, err, "GetGameBySession")
 
-	// 5. Late Join: Bob joins AFTER CreateGame
-	t.Log("  [RUN] Bob late joins after CreateGame...")
+
+	// 5. Late Join: Bob joins AFTER session creation
+	t.Log("  [RUN] Bob late joins...")
+
 	_, err = c.SessionClient.JoinSession(bobCtx, &pb.JoinSessionRequest{SessionId: session.Id})
 	testutil.AssertSuccess(t, err, "Bob Late Join")
 
-	// 5.5 Late Deck: Alice adds another deck AFTER CreateGame
-	t.Log("  [RUN] Alice adds another deck after CreateGame...")
+	// 5.5 Late Deck: Alice adds another deck AFTER session creation
+	t.Log("  [RUN] Alice adds another deck...")
+
 	deck2, err := c.DeckClient.CreateDeck(aliceCtx, &pb.CreateDeckRequest{Name: "Late Deck"})
 	testutil.AssertSuccess(t, err, "CreateDeck 2")
 	for i := 0; i < 20; i++ {

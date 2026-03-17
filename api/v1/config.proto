@@ -11,6 +11,11 @@ message Config {
   message Game {
     uint32 min_required_players = 1;
   }
+  message Registration {
+    uint32 max_unique_identifier_recreations = 1;
+  }
   Limits limits = 1;
   Game game = 2;
+  Registration registration = 3;
+  bool is_development = 4;
 }

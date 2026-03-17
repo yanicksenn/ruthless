@@ -43,23 +43,8 @@ func getGameClientAndCtx(cmd *cobra.Command) (pb.GameServiceClient, context.Cont
 	return client, ctx, cancel, conn
 }
 
-var gameCreateCmd = &cobra.Command{
-	Use:   "create [session_id]",
-	Short: "Create a game from a session",
-	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		sessionID := args[0]
-		client, ctx, cancel, conn := getGameClientAndCtx(cmd)
-		defer cancel()
-		defer conn.Close()
+/* game create command removed - games are now created automatically with sessions */
 
-		resp, err := client.CreateGame(ctx, &pb.CreateGameRequest{SessionId: sessionID})
-		if err != nil {
-			log.Fatalf("Failed to create game: %v", err)
-		}
-		fmt.Printf("Game Created! ID: %s\n", resp.Id)
-	},
-}
 
 var gameStartCmd = &cobra.Command{
 	Use:   "begin [game_id]",
@@ -184,7 +169,7 @@ var gameJudgeCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(gameCmd)
-	gameCmd.AddCommand(gameCreateCmd)
+	// gameCmd.AddCommand(gameCreateCmd)
 	gameCmd.AddCommand(gameStartCmd)
 	gameCmd.AddCommand(gameStatusCmd)
 	gameCmd.AddCommand(gameHandCmd)

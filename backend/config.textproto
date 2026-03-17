@@ -4,3 +4,6 @@ limits {
 game {
   min_required_players: 2
 }
+registration {
+  max_unique_identifier_recreations: 10
+}

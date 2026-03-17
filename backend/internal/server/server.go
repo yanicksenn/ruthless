@@ -12,7 +12,9 @@ import (
 
 	pb "github.com/yanicksenn/ruthless/api/v1"
 	"github.com/yanicksenn/ruthless/backend/internal/auth"
+	"github.com/yanicksenn/ruthless/backend/internal/auth/fake"
 	"github.com/yanicksenn/ruthless/backend/internal/storage"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type Server struct {
@@ -28,6 +30,11 @@ type Server struct {
 }
 
 func New(store storage.Storage, authenticator auth.Authenticator, config *pb.Config) *Server {
+	// Detect development mode based on authenticator type
+	if _, ok := authenticator.(*fake.Authenticator); ok {
+		config.IsDevelopment = true
+	}
+
 	return &Server{
 		store:  store,
 		auth:   authenticator,
@@ -73,9 +80,14 @@ func (s *Server) UnaryAuthInterceptor() grpc.UnaryServerInterceptor {
 
 			// Verify user exists in storage (unless registering)
 			if !strings.HasSuffix(info.FullMethod, "UserService/Register") {
-				_, err := s.store.GetUser(ctx, player.Id)
+				dbUser, err := s.store.GetUser(ctx, player.Id)
 				if err != nil {
 					return nil, status.Errorf(codes.PermissionDenied, "user not registered: %v", err)
+				}
+
+				// Enforce pending completion
+				if dbUser.Identifier == "" && !isAllowedWhilePending(info.FullMethod) {
+					return nil, status.Errorf(codes.FailedPrecondition, "registration completion required")
 				}
 			}
 
@@ -119,10 +131,28 @@ func requiresAuth(method string) bool {
 		return true
 	}
 	if strings.HasPrefix(method, "/ruthless.v1.GameService/") {
-		if strings.Contains(method, "GetGame") || strings.Contains(method, "CreateGame") {
+		if strings.Contains(method, "GetGame") {
 			return false
 		}
 		return true
 	}
+
 	return false
+}
+
+func isAllowedWhilePending(method string) bool {
+	allowed := []string{
+		"UserService/Register",
+		"UserService/CompleteRegistration",
+		"UserService/GetMe",
+	}
+	for _, m := range allowed {
+		if strings.HasSuffix(method, m) {
+			return true
+		}
+	}
+	return false
+}
+func (s *Server) GetConfig(ctx context.Context, _ *emptypb.Empty) (*pb.Config, error) {
+	return s.config, nil
 }

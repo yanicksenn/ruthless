@@ -22,6 +22,14 @@ export interface Config {
      * @generated from protobuf field: ruthless.v1.Config.Game game = 2
      */
     game?: Config_Game;
+    /**
+     * @generated from protobuf field: ruthless.v1.Config.Registration registration = 3
+     */
+    registration?: Config_Registration;
+    /**
+     * @generated from protobuf field: bool is_development = 4
+     */
+    isDevelopment: boolean;
 }
 /**
  * @generated from protobuf message ruthless.v1.Config.Limits
@@ -41,16 +49,28 @@ export interface Config_Game {
      */
     minRequiredPlayers: number;
 }
+/**
+ * @generated from protobuf message ruthless.v1.Config.Registration
+ */
+export interface Config_Registration {
+    /**
+     * @generated from protobuf field: uint32 max_unique_identifier_recreations = 1
+     */
+    maxUniqueIdentifierRecreations: number;
+}
 // @generated message type with reflection information, may provide speed optimized methods
 class Config$Type extends MessageType<Config> {
     constructor() {
         super("ruthless.v1.Config", [
             { no: 1, name: "limits", kind: "message", T: () => Config_Limits },
-            { no: 2, name: "game", kind: "message", T: () => Config_Game }
+            { no: 2, name: "game", kind: "message", T: () => Config_Game },
+            { no: 3, name: "registration", kind: "message", T: () => Config_Registration },
+            { no: 4, name: "is_development", kind: "scalar", T: 8 /*ScalarType.BOOL*/ }
         ]);
     }
     create(value?: PartialMessage<Config>): Config {
         const message = globalThis.Object.create((this.messagePrototype!));
+        message.isDevelopment = false;
         if (value !== undefined)
             reflectionMergePartial<Config>(this, message, value);
         return message;
@@ -65,6 +85,12 @@ class Config$Type extends MessageType<Config> {
                     break;
                 case /* ruthless.v1.Config.Game game */ 2:
                     message.game = Config_Game.internalBinaryRead(reader, reader.uint32(), options, message.game);
+                    break;
+                case /* ruthless.v1.Config.Registration registration */ 3:
+                    message.registration = Config_Registration.internalBinaryRead(reader, reader.uint32(), options, message.registration);
+                    break;
+                case /* bool is_development */ 4:
+                    message.isDevelopment = reader.bool();
                     break;
                 default:
                     let u = options.readUnknownField;
@@ -84,6 +110,12 @@ class Config$Type extends MessageType<Config> {
         /* ruthless.v1.Config.Game game = 2; */
         if (message.game)
             Config_Game.internalBinaryWrite(message.game, writer.tag(2, WireType.LengthDelimited).fork(), options).join();
+        /* ruthless.v1.Config.Registration registration = 3; */
+        if (message.registration)
+            Config_Registration.internalBinaryWrite(message.registration, writer.tag(3, WireType.LengthDelimited).fork(), options).join();
+        /* bool is_development = 4; */
+        if (message.isDevelopment !== false)
+            writer.tag(4, WireType.Varint).bool(message.isDevelopment);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
@@ -188,3 +220,50 @@ class Config_Game$Type extends MessageType<Config_Game> {
  * @generated MessageType for protobuf message ruthless.v1.Config.Game
  */
 export const Config_Game = new Config_Game$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class Config_Registration$Type extends MessageType<Config_Registration> {
+    constructor() {
+        super("ruthless.v1.Config.Registration", [
+            { no: 1, name: "max_unique_identifier_recreations", kind: "scalar", T: 13 /*ScalarType.UINT32*/ }
+        ]);
+    }
+    create(value?: PartialMessage<Config_Registration>): Config_Registration {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.maxUniqueIdentifierRecreations = 0;
+        if (value !== undefined)
+            reflectionMergePartial<Config_Registration>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: Config_Registration): Config_Registration {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* uint32 max_unique_identifier_recreations */ 1:
+                    message.maxUniqueIdentifierRecreations = reader.uint32();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: Config_Registration, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* uint32 max_unique_identifier_recreations = 1; */
+        if (message.maxUniqueIdentifierRecreations !== 0)
+            writer.tag(1, WireType.Varint).uint32(message.maxUniqueIdentifierRecreations);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message ruthless.v1.Config.Registration
+ */
+export const Config_Registration = new Config_Registration$Type();

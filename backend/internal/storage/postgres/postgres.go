@@ -233,19 +233,33 @@ func (s *Storage) DeleteCard(ctx context.Context, id string) error {
 
 // User operations
 func (s *Storage) CreateUser(ctx context.Context, user *pb.User) error {
-	_, err := s.db.ExecContext(ctx, "INSERT INTO users (id, name) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name", user.Id, user.Name)
-	return err
+	var identifier sql.NullString
+	if user.Identifier != "" {
+		identifier = sql.NullString{String: user.Identifier, Valid: true}
+	}
+	_, err := s.db.ExecContext(ctx, "INSERT INTO users (id, name, identifier) VALUES ($1, $2, $3) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, identifier = EXCLUDED.identifier", user.Id, user.Name, identifier)
+	if err != nil {
+		if strings.Contains(err.Error(), "unique_name_identifier") {
+			return storage.ErrAlreadyExists
+		}
+		return err
+	}
+	return nil
 }
 
 func (s *Storage) GetUser(ctx context.Context, id string) (*pb.User, error) {
-	row := s.db.QueryRowContext(ctx, "SELECT id, name, created_at FROM users WHERE id = $1", id)
+	row := s.db.QueryRowContext(ctx, "SELECT id, name, identifier, created_at FROM users WHERE id = $1", id)
 	var u pb.User
+	var identifier sql.NullString
 	var createdAt sql.NullTime
-	if err := row.Scan(&u.Id, &u.Name, &createdAt); err != nil {
+	if err := row.Scan(&u.Id, &u.Name, &identifier, &createdAt); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, storage.ErrNotFound
 		}
 		return nil, err
+	}
+	if identifier.Valid {
+		u.Identifier = identifier.String
 	}
 	if createdAt.Valid {
 		u.CreatedAt = timestamppb.New(createdAt.Time)

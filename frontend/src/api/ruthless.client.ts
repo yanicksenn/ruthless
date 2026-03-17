@@ -10,11 +10,11 @@ import type { SelectWinnerRequest } from "./ruthless";
 import type { PlayCardsResponse } from "./ruthless";
 import type { PlayCardsRequest } from "./ruthless";
 import type { StartGameRequest } from "./ruthless";
-import type { GetGameRequest } from "./ruthless";
 import type { Game } from "./ruthless";
-import type { CreateGameRequest } from "./ruthless";
+import type { GetGameRequest } from "./ruthless";
 import { UserService } from "./ruthless";
 import type { GetMeRequest } from "./ruthless";
+import type { CompleteRegistrationRequest } from "./ruthless";
 import type { User } from "./ruthless";
 import type { RegisterRequest } from "./ruthless";
 import { SessionService } from "./ruthless";
@@ -45,6 +45,7 @@ import type { ListDecksRequest } from "./ruthless";
 import type { RpcTransport } from "@protobuf-ts/runtime-rpc";
 import type { ServiceInfo } from "@protobuf-ts/runtime-rpc";
 import { CardService } from "./ruthless";
+import type { Config } from "./config";
 import type { Empty } from "./google/protobuf/empty";
 import type { DeleteCardRequest } from "./ruthless";
 import type { Card } from "./ruthless";
@@ -70,6 +71,10 @@ export interface ICardServiceClient {
      * @generated from protobuf rpc: DeleteCard
      */
     deleteCard(input: DeleteCardRequest, options?: RpcOptions): UnaryCall<DeleteCardRequest, Empty>;
+    /**
+     * @generated from protobuf rpc: GetConfig
+     */
+    getConfig(input: Empty, options?: RpcOptions): UnaryCall<Empty, Config>;
 }
 /**
  * @generated from protobuf service ruthless.v1.CardService
@@ -100,6 +105,13 @@ export class CardServiceClient implements ICardServiceClient, ServiceInfo {
     deleteCard(input: DeleteCardRequest, options?: RpcOptions): UnaryCall<DeleteCardRequest, Empty> {
         const method = this.methods[2], opt = this._transport.mergeOptions(options);
         return stackIntercept<DeleteCardRequest, Empty>("unary", this._transport, method, opt, input);
+    }
+    /**
+     * @generated from protobuf rpc: GetConfig
+     */
+    getConfig(input: Empty, options?: RpcOptions): UnaryCall<Empty, Config> {
+        const method = this.methods[3], opt = this._transport.mergeOptions(options);
+        return stackIntercept<Empty, Config>("unary", this._transport, method, opt, input);
     }
 }
 /**
@@ -284,6 +296,10 @@ export interface IUserServiceClient {
      */
     register(input: RegisterRequest, options?: RpcOptions): UnaryCall<RegisterRequest, User>;
     /**
+     * @generated from protobuf rpc: CompleteRegistration
+     */
+    completeRegistration(input: CompleteRegistrationRequest, options?: RpcOptions): UnaryCall<CompleteRegistrationRequest, User>;
+    /**
      * @generated from protobuf rpc: GetMe
      */
     getMe(input: GetMeRequest, options?: RpcOptions): UnaryCall<GetMeRequest, User>;
@@ -305,10 +321,17 @@ export class UserServiceClient implements IUserServiceClient, ServiceInfo {
         return stackIntercept<RegisterRequest, User>("unary", this._transport, method, opt, input);
     }
     /**
+     * @generated from protobuf rpc: CompleteRegistration
+     */
+    completeRegistration(input: CompleteRegistrationRequest, options?: RpcOptions): UnaryCall<CompleteRegistrationRequest, User> {
+        const method = this.methods[1], opt = this._transport.mergeOptions(options);
+        return stackIntercept<CompleteRegistrationRequest, User>("unary", this._transport, method, opt, input);
+    }
+    /**
      * @generated from protobuf rpc: GetMe
      */
     getMe(input: GetMeRequest, options?: RpcOptions): UnaryCall<GetMeRequest, User> {
-        const method = this.methods[1], opt = this._transport.mergeOptions(options);
+        const method = this.methods[2], opt = this._transport.mergeOptions(options);
         return stackIntercept<GetMeRequest, User>("unary", this._transport, method, opt, input);
     }
 }
@@ -316,10 +339,6 @@ export class UserServiceClient implements IUserServiceClient, ServiceInfo {
  * @generated from protobuf service ruthless.v1.GameService
  */
 export interface IGameServiceClient {
-    /**
-     * @generated from protobuf rpc: CreateGame
-     */
-    createGame(input: CreateGameRequest, options?: RpcOptions): UnaryCall<CreateGameRequest, Game>;
     /**
      * @generated from protobuf rpc: GetGame
      */
@@ -355,52 +374,45 @@ export class GameServiceClient implements IGameServiceClient, ServiceInfo {
     constructor(private readonly _transport: RpcTransport) {
     }
     /**
-     * @generated from protobuf rpc: CreateGame
-     */
-    createGame(input: CreateGameRequest, options?: RpcOptions): UnaryCall<CreateGameRequest, Game> {
-        const method = this.methods[0], opt = this._transport.mergeOptions(options);
-        return stackIntercept<CreateGameRequest, Game>("unary", this._transport, method, opt, input);
-    }
-    /**
      * @generated from protobuf rpc: GetGame
      */
     getGame(input: GetGameRequest, options?: RpcOptions): UnaryCall<GetGameRequest, Game> {
-        const method = this.methods[1], opt = this._transport.mergeOptions(options);
+        const method = this.methods[0], opt = this._transport.mergeOptions(options);
         return stackIntercept<GetGameRequest, Game>("unary", this._transport, method, opt, input);
     }
     /**
      * @generated from protobuf rpc: StartGame
      */
     startGame(input: StartGameRequest, options?: RpcOptions): UnaryCall<StartGameRequest, Game> {
-        const method = this.methods[2], opt = this._transport.mergeOptions(options);
+        const method = this.methods[1], opt = this._transport.mergeOptions(options);
         return stackIntercept<StartGameRequest, Game>("unary", this._transport, method, opt, input);
     }
     /**
      * @generated from protobuf rpc: PlayCards
      */
     playCards(input: PlayCardsRequest, options?: RpcOptions): UnaryCall<PlayCardsRequest, PlayCardsResponse> {
-        const method = this.methods[3], opt = this._transport.mergeOptions(options);
+        const method = this.methods[2], opt = this._transport.mergeOptions(options);
         return stackIntercept<PlayCardsRequest, PlayCardsResponse>("unary", this._transport, method, opt, input);
     }
     /**
      * @generated from protobuf rpc: SelectWinner
      */
     selectWinner(input: SelectWinnerRequest, options?: RpcOptions): UnaryCall<SelectWinnerRequest, SelectWinnerResponse> {
-        const method = this.methods[4], opt = this._transport.mergeOptions(options);
+        const method = this.methods[3], opt = this._transport.mergeOptions(options);
         return stackIntercept<SelectWinnerRequest, SelectWinnerResponse>("unary", this._transport, method, opt, input);
     }
     /**
      * @generated from protobuf rpc: GetHand
      */
     getHand(input: GetHandRequest, options?: RpcOptions): UnaryCall<GetHandRequest, GetHandResponse> {
-        const method = this.methods[5], opt = this._transport.mergeOptions(options);
+        const method = this.methods[4], opt = this._transport.mergeOptions(options);
         return stackIntercept<GetHandRequest, GetHandResponse>("unary", this._transport, method, opt, input);
     }
     /**
      * @generated from protobuf rpc: GetGameBySession
      */
     getGameBySession(input: GetGameBySessionRequest, options?: RpcOptions): UnaryCall<GetGameBySessionRequest, Game> {
-        const method = this.methods[6], opt = this._transport.mergeOptions(options);
+        const method = this.methods[5], opt = this._transport.mergeOptions(options);
         return stackIntercept<GetGameBySessionRequest, Game>("unary", this._transport, method, opt, input);
     }
 }

@@ -132,8 +132,9 @@ func TestE2E(t *testing.T) {
 	client.SessionClient.JoinSession(aliceCtx, &pb.JoinSessionRequest{SessionId: session.Id})
 	client.SessionClient.JoinSession(bobCtx, &pb.JoinSessionRequest{SessionId: session.Id})
 
-	game, _ := client.GameClient.CreateGame(aliceCtx, &pb.CreateGameRequest{SessionId: session.Id})
+	game, _ := client.GameClient.GetGameBySession(aliceCtx, &pb.GetGameBySessionRequest{SessionId: session.Id})
 	client.GameClient.StartGame(aliceCtx, &pb.StartGameRequest{Id: game.Id})
+
 
 	// Czar roles
 	game, _ = client.GameClient.GetGame(aliceCtx, &pb.GetGameRequest{Id: game.Id})

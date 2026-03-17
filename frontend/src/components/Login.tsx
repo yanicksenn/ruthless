@@ -4,8 +4,9 @@ import { LogIn, UserPlus } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
 
 export const Login: React.FC = () => {
-  const { login, register } = useAuth();
+  const { user, login, register, completeRegistration, isDevelopment } = useAuth();
   const [error, setError] = React.useState<string | null>(null);
+  const [chosenName, setChosenName] = React.useState('');
 
   const handleLoginSuccess = async (credentialResponse: any) => {
     if (credentialResponse.credential) {
@@ -28,6 +29,67 @@ export const Login: React.FC = () => {
       }
     }
   };
+
+  const handleCompleteRegistration = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chosenName.trim()) return;
+
+    setError(null);
+    try {
+      await completeRegistration(chosenName.trim());
+    } catch (err: any) {
+      setError(err.message || 'Registration completion failed.');
+    }
+  };
+
+  if (user?.pendingCompletion) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="glass p-10 rounded-3xl w-full max-w-md card-shadow border border-white/5 animate-in fade-in zoom-in duration-300">
+          <div className="text-center mb-10">
+            <div className="inline-block p-3 rounded-2xl bg-secondary/10 mb-4">
+              <UserPlus size={32} className="text-secondary" />
+            </div>
+            <h1 className="text-3xl font-black tracking-tight text-white mb-2">PICK YOUR ALIAS</h1>
+            <p className="text-gray-400 text-sm">Every terrible person needs a name.</p>
+          </div>
+
+          <form onSubmit={handleCompleteRegistration} className="space-y-6">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-widest px-1">Chosen Name</label>
+              <input
+                autoFocus
+                type="text"
+                placeholder="e.g. TotalAsshat"
+                value={chosenName}
+                onChange={(e) => setChosenName(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:ring-2 focus:ring-secondary/50 transition-all font-bold text-lg"
+              />
+              <p className="text-[10px] text-gray-500 px-1 italic">
+                A random 8-digit identifier will be appended to your name.
+              </p>
+            </div>
+
+            {error && (
+              <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-400 text-sm text-center">
+                {error}
+              </div>
+            )}
+
+            <div className="pt-2 flex gap-3">
+              <button
+                type="submit"
+                disabled={!chosenName.trim()}
+                className="w-full bg-secondary hover:bg-secondary/80 text-background py-4 rounded-2xl font-black transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(234,179,8,0.3)]"
+              >
+                COMPLETE REGISTRATION
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
@@ -90,23 +152,39 @@ export const Login: React.FC = () => {
           </div>
           <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
-          <div className="space-y-3">
-            <h2 className="text-xl font-bold text-white flex items-center gap-2">
-              <span className="p-1 rounded bg-gray-500/10"><UserPlus size={16} className="text-gray-400" /></span>
-              Developer Access
-            </h2>
-            <p className="text-sm text-gray-400 leading-relaxed">
-              If Google Auth isn't configured for your domain, use a developer token instead.
-            </p>
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              const target = e.target as typeof e.target & {
-                token: { value: string };
-              };
-              if (target.token.value.trim()) {
-                login(target.token.value.trim());
-              }
-            }} className="flex gap-2">
+          {isDevelopment && (
+            <div className="space-y-3">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <span className="p-1 rounded bg-gray-500/10"><UserPlus size={16} className="text-gray-400" /></span>
+                Developer Access
+              </h2>
+              <p className="text-sm text-gray-400 leading-relaxed">
+                Backend is in development mode. Use a developer token to login.
+              </p>
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                const target = e.target as typeof e.target & {
+                  token: { value: string };
+                };
+                const tokenVal = target.token.value.trim();
+                if (tokenVal) {
+                  setError(null);
+                  try {
+                    await login(tokenVal);
+                  } catch (err: any) {
+                    // If login fails with PermissionDenied (code 7) or user not found, try register
+                    if (err.code === "PERMISSION_DENIED" || err.message?.toLowerCase().includes("not registered") || err.message?.toLowerCase().includes("not found")) {
+                      try {
+                        await register(tokenVal);
+                      } catch (regErr: any) {
+                        setError(regErr.message || 'Developer registration failed.');
+                      }
+                    } else {
+                      setError(err.message || 'Developer login failed.');
+                    }
+                  }
+                }
+              }} className="flex gap-2">
               <input
                 name="token"
                 type="text"
@@ -121,12 +199,13 @@ export const Login: React.FC = () => {
               </button>
             </form>
           </div>
-        </div>
-        
-        <p className="mt-10 text-[10px] text-gray-600 text-center uppercase tracking-widest font-bold font-mono">
-          Identity: {import.meta.env.VITE_GOOGLE_CLIENT_ID ? 'Configured' : 'Missing'} | Port: {window.location.port}
-        </p>
+        )}
       </div>
+
+      <p className="mt-10 text-[10px] text-gray-600 text-center uppercase tracking-widest font-bold font-mono">
+        Identity: {import.meta.env.VITE_GOOGLE_CLIENT_ID ? 'Configured' : 'Missing'} | Port: {window.location.port}
+      </p>
     </div>
-  );
+  </div>
+);
 };

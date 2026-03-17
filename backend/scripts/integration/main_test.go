@@ -45,11 +45,17 @@ func TestIntegration(t *testing.T) {
 	if _, err := client.UserClient.Register(aliceCtx, &pb.RegisterRequest{}); err != nil {
 		t.Fatalf("Failed to register Alice: %v", err)
 	}
+	if _, err := client.UserClient.CompleteRegistration(aliceCtx, &pb.CompleteRegistrationRequest{Name: "Alice"}); err != nil {
+		t.Fatalf("Failed to complete registration for Alice: %v", err)
+	}
 
 	// Initialize Bob
 	bobCtx := client.GetAuthContext(ctx, "Bob")
 	if _, err := client.UserClient.Register(bobCtx, &pb.RegisterRequest{}); err != nil {
 		t.Fatalf("Failed to register Bob: %v", err)
+	}
+	if _, err := client.UserClient.CompleteRegistration(bobCtx, &pb.CompleteRegistrationRequest{Name: "Bob"}); err != nil {
+		t.Fatalf("Failed to complete registration for Bob: %v", err)
 	}
 
 	runID := fmt.Sprintf("%d", time.Now().UnixNano())

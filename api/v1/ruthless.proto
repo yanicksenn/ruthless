@@ -6,6 +6,7 @@ option go_package = "github.com/yanicksenn/ruthless/api/v1;ruthlespb";
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/empty.proto";
+import "config.proto";
 
 enum CardColor {
   CARD_COLOR_UNSPECIFIED = 0;
@@ -31,6 +32,8 @@ message User {
   string id = 1;
   string name = 2;
   google.protobuf.Timestamp created_at = 3;
+  string identifier = 4;
+  bool pending_completion = 5;
 }
 
 message Deck {
@@ -56,6 +59,7 @@ enum GameState {
   GAME_STATE_PLAYING = 2;
   GAME_STATE_JUDGING = 3;
   GAME_STATE_FINISHED = 4;
+  GAME_STATE_ABANDONED = 5;
 }
 
 message PlayerHand {
@@ -129,6 +133,7 @@ service CardService {
   rpc ListCards (ListCardsRequest) returns (ListCardsResponse);
   rpc CreateCard (CreateCardRequest) returns (Card);
   rpc DeleteCard (DeleteCardRequest) returns (google.protobuf.Empty);
+  rpc GetConfig (google.protobuf.Empty) returns (Config);
 }
 
 // ----------------- Deck Service -----------------
@@ -222,19 +227,23 @@ service SessionService {
 
 // ----------------- User Service -----------------
 
-message RegisterRequest {}
+message RegisterRequest {
+  string name = 1; // Optional, defaults to identity name if providing a name during register is still desired
+}
+
+message CompleteRegistrationRequest {
+  string name = 1;
+}
 message GetMeRequest {}
 
 service UserService {
   rpc Register (RegisterRequest) returns (User);
+  rpc CompleteRegistration (CompleteRegistrationRequest) returns (User);
   rpc GetMe (GetMeRequest) returns (User);
 }
 
 // ----------------- Game Service -----------------
 
-message CreateGameRequest {
-  string session_id = 1;
-}
 
 message GetGameRequest {
   string id = 1;
@@ -270,7 +279,6 @@ message GetHandResponse {
 }
 
 service GameService {
-  rpc CreateGame (CreateGameRequest) returns (Game);
   rpc GetGame (GetGameRequest) returns (Game);
   rpc StartGame (StartGameRequest) returns (Game);
   rpc PlayCards (PlayCardsRequest) returns (PlayCardsResponse);
@@ -278,3 +286,4 @@ service GameService {
   rpc GetHand (GetHandRequest) returns (GetHandResponse);
   rpc GetGameBySession (GetGameBySessionRequest) returns (Game);
 }
+

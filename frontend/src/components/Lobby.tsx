@@ -9,9 +9,11 @@ import { SessionCreationDialog } from './SessionCreationDialog';
 
 interface LobbyProps {
   onJoinSession: (sessionId: string) => void;
+  activeSessionId: string | null;
 }
 
-export const Lobby: React.FC<LobbyProps> = ({ onJoinSession }) => {
+export const Lobby: React.FC<LobbyProps> = ({ onJoinSession, activeSessionId }) => {
+
   const { token, user, logout } = useAuth();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [decks, setDecks] = useState<Deck[]>([]);
@@ -40,6 +42,10 @@ export const Lobby: React.FC<LobbyProps> = ({ onJoinSession }) => {
   }, [token]);
 
   const handleJoinSession = async (sessionId: string) => {
+    if (sessionId === activeSessionId) {
+      onJoinSession(sessionId);
+      return;
+    }
     try {
       await sessionClient.joinSession({ 
         sessionId,
@@ -51,6 +57,7 @@ export const Lobby: React.FC<LobbyProps> = ({ onJoinSession }) => {
       alert('Failed to join session');
     }
   };
+
 
   const handleCreateSession = async (deckIds: string[]) => {
     try {
@@ -105,11 +112,13 @@ export const Lobby: React.FC<LobbyProps> = ({ onJoinSession }) => {
           {sessions.map((session) => (
             <div
               key={session.id}
-              className="glass p-6 rounded-2xl hover:border-primary/50 transition-all cursor-pointer group"
+              className={`glass p-6 rounded-2xl transition-all cursor-pointer group ${
+                session.id === activeSessionId ? 'border-secondary/50 ring-1 ring-secondary/20 shadow-lg shadow-secondary/5' : 'hover:border-primary/50'
+              }`}
               onClick={() => handleJoinSession(session.id)}
             >
               <div className="flex justify-between items-start mb-4">
-                <div className="flex items-center gap-2 text-primary">
+                <div className={`flex items-center gap-2 ${session.id === activeSessionId ? 'text-secondary' : 'text-primary'}`}>
                   <Hash size={16} />
                   <span className="font-mono text-sm">{session.id.substring(0, 8)}</span>
                 </div>
@@ -118,7 +127,9 @@ export const Lobby: React.FC<LobbyProps> = ({ onJoinSession }) => {
                   {session.playerIds.length} PLAYERS
                 </div>
               </div>
-              <h3 className="text-xl font-bold mb-6 group-hover:text-primary transition-colors">
+              <h3 className={`text-xl font-bold mb-6 transition-colors ${
+                session.id === activeSessionId ? 'text-secondary' : 'group-hover:text-primary'
+              }`}>
                 {session.ownerId.split('-')[0]}'s Session
               </h3>
               <div className="flex justify-between items-center">
@@ -134,11 +145,14 @@ export const Lobby: React.FC<LobbyProps> = ({ onJoinSession }) => {
                      </div>
                    )}
                 </div>
-                <button className="text-xs font-black uppercase text-gray-400 group-hover:text-white transition-colors flex items-center gap-1">
-                  JOIN ROOM <Play size={12} fill="currentColor" />
+                <button className={`text-xs font-black uppercase transition-colors flex items-center gap-1 ${
+                  session.id === activeSessionId ? 'text-secondary' : 'text-gray-400 group-hover:text-white'
+                }`}>
+                  {session.id === activeSessionId ? 'RESUME ROOM' : 'JOIN ROOM'} <Play size={12} fill="currentColor" />
                 </button>
               </div>
             </div>
+
           ))}
           {sessions.length === 0 && !loading && (
              <div className="md:col-span-2 glass p-12 rounded-3xl text-center border-dashed border-2 border-white/5">
