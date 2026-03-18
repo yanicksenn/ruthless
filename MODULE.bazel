@@ -31,3 +31,34 @@ use_repo(
     "org_golang_x_net",
     "org_golang_x_oauth2",
 )
+
+bazel_dep(name = "rules_oci", version = "2.2.0")
+bazel_dep(name = "rules_pkg", version = "1.0.1")
+
+oci = use_extension("@rules_oci//oci:extensions.bzl", "oci")
+oci.pull(
+    name = "distroless_base",
+    digest = "sha256:340ba156c899ddac5ba57c5188b8e7cd56448eb7ee65b280574465eac2718ad2",
+    image = "gcr.io/distroless/static-debian12",
+)
+oci.pull(
+    name = "nginx_base",
+    digest = "sha256:08fe94b0d1e72fc687840f5696f6e107a85c327b1bcb8a7acc22f8c100227c67",
+    image = "docker.io/library/nginx",
+)
+use_repo(oci, "distroless_base", "nginx_base")
+
+bazel_dep(name = "aspect_rules_js", version = "2.1.2")
+
+npm = use_extension("@aspect_rules_js//npm:extensions.bzl", "npm", dev_dependency = True)
+bazel_dep(name = "rules_nodejs", version = "6.3.3")
+node = use_extension("@rules_nodejs//nodejs:extensions.bzl", "node", dev_dependency = True)
+node.toolchain(node_version = "20.18.0")
+
+npm.npm_translate_lock(
+    name = "npm",
+    npm_package_lock = "//frontend:package-lock.json",
+    pnpm_lock = "//frontend:pnpm-lock.yaml",
+    verify_node_modules_ignored = "//:.bazelignore",
+)
+use_repo(npm, "npm")

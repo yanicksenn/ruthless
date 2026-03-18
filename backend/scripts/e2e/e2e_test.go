@@ -66,7 +66,7 @@ func TestE2E(t *testing.T) {
 		defer cleanup()
 	}
 
-	client := testutil.NewTestClient(connectAddr, "")
+	client := testutil.NewTestClient(connectAddr, "", nil)
 	defer client.Close()
 
 	// 0. Setup Alice

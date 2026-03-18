@@ -1,9 +1,24 @@
-limits {
-  card_text_limit: 280
+public {
+  limits {
+    max_user_name_length: 32
+    min_user_name_length: 2
+    max_card_text_length: 256
+    max_deck_name_length: 64
+    max_session_name_length: 64
+    max_cards_per_user: 512
+    max_decks_per_user: 16
+    max_cards_per_deck: 128
+    max_contributors_per_deck: 16
+    max_decks_per_session: 16
+    max_players_per_session: 16
+    max_sessions_per_user: 32
+    max_cards_per_session: 1024
+  }
+  game {
+    min_required_players: 2
+  }
+  registration {
+    max_unique_identifier_recreations: 10
+  }
 }
-game {
-  min_required_players: 2
-}
-registration {
-  max_unique_identifier_recreations: 10
-}
+

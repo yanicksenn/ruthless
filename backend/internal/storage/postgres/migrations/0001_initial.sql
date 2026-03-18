@@ -3,7 +3,14 @@
 CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    identifier TEXT,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT unique_name_identifier UNIQUE (name, identifier)
+);
+
+CREATE TABLE IF NOT EXISTS revoked_tokens (
+    token TEXT PRIMARY KEY,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS cards (
@@ -31,13 +38,15 @@ CREATE TABLE IF NOT EXISTS deck_contributors (
 
 CREATE TABLE IF NOT EXISTS deck_cards (
     deck_id TEXT NOT NULL REFERENCES decks(id),
-    card_id TEXT NOT NULL REFERENCES cards(id),
+    card_id TEXT NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
     PRIMARY KEY (deck_id, card_id)
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
     id TEXT PRIMARY KEY,
-    owner_id TEXT NOT NULL REFERENCES users(id)
+    owner_id TEXT NOT NULL REFERENCES users(id),
+    name TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS session_players (

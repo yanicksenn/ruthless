@@ -21,9 +21,10 @@ func runAuthTests(t *testing.T, ctx context.Context, c *testutil.TestClient, run
 	// 2. SUCCESS: GetMe Charlie (Fake Token) -> Pending -> Complete
 	charlieName := "AuthCharlie_" + runID
 	charlieCtx := c.GetAuthContext(ctx, charlieName)
-	_, err = c.UserClient.Register(charlieCtx, &pb.RegisterRequest{})
-	testutil.AssertSuccess(t, err, "Register Charlie (Fake)")
-
+	if c.Store != nil {
+		c.Store.CreateUser(ctx, &pb.User{Id: charlieName, Name: charlieName})
+	}
+	
 	// GetMe should show pending
 	me, err := c.UserClient.GetMe(charlieCtx, &pb.GetMeRequest{})
 	testutil.AssertSuccess(t, err, "GetMe Charlie (Pending)")
@@ -46,15 +47,31 @@ func runAuthTests(t *testing.T, ctx context.Context, c *testutil.TestClient, run
 		t.Errorf("Expected Charlie to NOT be pending completion")
 	}
 
-	// 3. SUCCESS: Register Bob (Fake Token) -> Complete
+	// 3. SUCCESS: Ensure Bob is created -> Complete
 	bobName := "AuthBob_" + runID
 	bobCtx := c.GetAuthContext(ctx, bobName)
-	_, err = c.UserClient.Register(bobCtx, &pb.RegisterRequest{})
-	testutil.AssertSuccess(t, err, "Register Bob")
+	if c.Store != nil {
+		c.Store.CreateUser(ctx, &pb.User{Id: bobName, Name: bobName})
+	}
 	_, err = c.UserClient.CompleteRegistration(bobCtx, &pb.CompleteRegistrationRequest{Name: bobName})
 	testutil.AssertSuccess(t, err, "CompleteRegistration Bob")
 
 	// 4. FAILURE: Unauthenticated GetMe
 	_, err = c.UserClient.GetMe(ctx, &pb.GetMeRequest{})
 	testutil.AssertError(t, err, codes.Unauthenticated, "missing Authorization")
+
+	// 5. SUCCESS: Idempotent GetMe/CompleteRegistration (Fake Token)
+	daveName := "AuthDave_" + runID
+	daveCtx := c.GetAuthContext(ctx, daveName)
+	if c.Store != nil {
+		c.Store.CreateUser(ctx, &pb.User{Id: daveName, Name: daveName})
+	}
+	
+	// Complete once
+	_, err = c.UserClient.CompleteRegistration(daveCtx, &pb.CompleteRegistrationRequest{Name: daveName})
+	testutil.AssertSuccess(t, err, "Complete Dave (First)")
+
+	// Complete again (should succeed - idempotent)
+	_, err = c.UserClient.CompleteRegistration(daveCtx, &pb.CompleteRegistrationRequest{Name: daveName})
+	testutil.AssertSuccess(t, err, "Complete Dave (Second - Idempotent)")
 }

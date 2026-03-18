@@ -1,0 +1,63 @@
+load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
+load("@rules_oci//oci:defs.bzl", "oci_image", "oci_load", "oci_push")
+
+genrule(
+    name = "build_dist",
+    srcs = glob(["**/*"], exclude=[
+        "node_modules/**", 
+        "dist/**", 
+        "BUILD.bazel",
+        ".eslintcache"
+    ]),
+    outs = ["dist.tar"],
+    cmd = """
+        # Copy sources to a temp dir to build
+        TMP_DIR=$$(mktemp -d)
+        cp -LR frontend/* $$TMP_DIR/
+        chmod -R u+w $$TMP_DIR/
+        cd $$TMP_DIR
+        
+        # Isolated cache and HOME
+        export HOME=$$TMP_DIR
+        export npm_config_cache=$$TMP_DIR/.npm_cache
+        
+        # Pass Vite Build Envs
+        export VITE_API_BASE_URL="http://localhost:8080"
+        export VITE_GOOGLE_CLIENT_ID="964146605436-cn068f6livloacebbi0itbhgvh9t5uns.apps.googleusercontent.com"
+        
+        # Install and build
+        npm ci --no-audit --no-fund --loglevel=error
+        npm run build
+        
+        # Package into tar at correct path
+        mkdir -p usr/share/nginx/html
+        cp -r dist/* usr/share/nginx/html/
+        tar -cf dist.tar usr
+        mv dist.tar $$OLDPWD/$(location dist.tar)
+        rm -rf $$TMP_DIR
+    """,
+    tags = ["requires-network"],
+)
+
+pkg_tar(
+    name = "nginx_conf_tar",
+    srcs = ["nginx.conf"],
+    package_dir = "/etc/nginx/conf.d",
+    remap_paths = {"nginx.conf": "default.conf"},
+)
+
+oci_image(
+    name = "image",
+    base = "@nginx_base",
+    tars = [
+        ":build_dist",
+        ":nginx_conf_tar",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+oci_load(
+    name = "tarball",
+    image = ":image",
+    repo_tags = ["frontend:latest"],
+)

@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	_ "github.com/lib/pq"
 	pb "github.com/yanicksenn/ruthless/api/v1"
@@ -237,12 +238,34 @@ func (s *Storage) CreateUser(ctx context.Context, user *pb.User) error {
 	if user.Identifier != "" {
 		identifier = sql.NullString{String: user.Identifier, Valid: true}
 	}
-	_, err := s.db.ExecContext(ctx, "INSERT INTO users (id, name, identifier) VALUES ($1, $2, $3) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, identifier = EXCLUDED.identifier", user.Id, user.Name, identifier)
+	_, err := s.db.ExecContext(ctx, "INSERT INTO users (id, name, identifier) VALUES ($1, $2, $3)", user.Id, user.Name, identifier)
+	if err != nil {
+		if strings.Contains(err.Error(), "unique_name_identifier") || strings.Contains(err.Error(), "users_pkey") {
+			return storage.ErrAlreadyExists
+		}
+		return err
+	}
+	return nil
+}
+
+func (s *Storage) UpdateUser(ctx context.Context, user *pb.User) error {
+	var identifier sql.NullString
+	if user.Identifier != "" {
+		identifier = sql.NullString{String: user.Identifier, Valid: true}
+	}
+	res, err := s.db.ExecContext(ctx, "UPDATE users SET name = $2, identifier = $3 WHERE id = $1", user.Id, user.Name, identifier)
 	if err != nil {
 		if strings.Contains(err.Error(), "unique_name_identifier") {
 			return storage.ErrAlreadyExists
 		}
 		return err
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return storage.ErrNotFound
 	}
 	return nil
 }
@@ -260,11 +283,37 @@ func (s *Storage) GetUser(ctx context.Context, id string) (*pb.User, error) {
 	}
 	if identifier.Valid {
 		u.Identifier = identifier.String
+		u.PendingCompletion = false
+	} else {
+		u.PendingCompletion = true
 	}
 	if createdAt.Valid {
 		u.CreatedAt = timestamppb.New(createdAt.Time)
 	}
 	return &u, nil
+}
+
+// Token operations
+func (s *Storage) RevokeToken(ctx context.Context, token string, expiresAt time.Time) error {
+	_, err := s.db.ExecContext(ctx, "INSERT INTO revoked_tokens (token, expires_at) VALUES ($1, $2) ON CONFLICT (token) DO UPDATE SET expires_at = EXCLUDED.expires_at", token, expiresAt)
+	return err
+}
+
+func (s *Storage) IsTokenRevoked(ctx context.Context, token string) (bool, error) {
+	var expiresAt time.Time
+	err := s.db.QueryRowContext(ctx, "SELECT expires_at FROM revoked_tokens WHERE token = $1", token).Scan(&expiresAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return false, nil
+		}
+		return false, err
+	}
+	// Let's delete it if it's already expired to clean up the DB
+	if expiresAt.Before(time.Now()) {
+		go s.db.ExecContext(context.Background(), "DELETE FROM revoked_tokens WHERE token = $1", token)
+		return false, nil // Expired token doesn't matter, but technically the JWT validate will catch it anyway
+	}
+	return true, nil
 }
 
 // Session operations
@@ -275,7 +324,7 @@ func (s *Storage) CreateSession(ctx context.Context, session *pb.Session) error 
 	}
 	defer tx.Rollback()
 
-	_, err = tx.ExecContext(ctx, "INSERT INTO sessions (id, owner_id) VALUES ($1, $2)", session.Id, session.OwnerId)
+	_, err = tx.ExecContext(ctx, "INSERT INTO sessions (id, owner_id, name, created_at) VALUES ($1, $2, $3, $4)", session.Id, session.OwnerId, session.Name, session.CreatedAt.AsTime())
 	if err != nil {
 		return err
 	}
@@ -298,13 +347,17 @@ func (s *Storage) CreateSession(ctx context.Context, session *pb.Session) error 
 }
 
 func (s *Storage) GetSession(ctx context.Context, id string) (*pb.Session, error) {
-	row := s.db.QueryRowContext(ctx, "SELECT id, owner_id FROM sessions WHERE id = $1", id)
+	row := s.db.QueryRowContext(ctx, "SELECT id, owner_id, name, created_at FROM sessions WHERE id = $1", id)
 	var session pb.Session
-	if err := row.Scan(&session.Id, &session.OwnerId); err != nil {
+	var createdAt sql.NullTime
+	if err := row.Scan(&session.Id, &session.OwnerId, &session.Name, &createdAt); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, storage.ErrNotFound
 		}
 		return nil, err
+	}
+	if createdAt.Valid {
+		session.CreatedAt = timestamppb.New(createdAt.Time)
 	}
 
 	// Fetch players
@@ -380,8 +433,21 @@ func (s *Storage) UpdateSession(ctx context.Context, session *pb.Session) error 
 	return tx.Commit()
 }
 
-func (s *Storage) ListSessions(ctx context.Context) ([]*pb.Session, error) {
-	rows, err := s.db.QueryContext(ctx, "SELECT id, owner_id FROM sessions")
+func (s *Storage) ListSessions(ctx context.Context, playerID string) ([]*pb.Session, error) {
+	// Filter for sessions that:
+	// 1. Are WAITING (state = 2)
+	// 2. OR Are PLAYING/JUDGING (state = 3, 4) AND the player is already a participant
+	query := `
+		SELECT s.id, s.owner_id, s.name, s.created_at
+		FROM sessions s
+		JOIN games g ON s.id = g.session_id
+		WHERE g.state = 2
+		   OR (g.state IN (3, 4) AND EXISTS (
+			   SELECT 1 FROM session_players sp 
+			   WHERE sp.session_id = s.id AND sp.player_id = $1
+		   ))
+	`
+	rows, err := s.db.QueryContext(ctx, query, playerID)
 	if err != nil {
 		return nil, err
 	}
@@ -389,12 +455,16 @@ func (s *Storage) ListSessions(ctx context.Context) ([]*pb.Session, error) {
  
 	var sessions []*pb.Session
 	for rows.Next() {
-		var sID string
-		var oID string
-		if err := rows.Scan(&sID, &oID); err != nil {
+		var sID, oID, name string
+		var createdAt sql.NullTime
+		if err := rows.Scan(&sID, &oID, &name, &createdAt); err != nil {
 			return nil, err
 		}
-		sessions = append(sessions, &pb.Session{Id: sID, OwnerId: oID})
+		sess := &pb.Session{Id: sID, OwnerId: oID, Name: name}
+		if createdAt.Valid {
+			sess.CreatedAt = timestamppb.New(createdAt.Time)
+		}
+		sessions = append(sessions, sess)
 	}
 
 	for _, sess := range sessions {
@@ -690,6 +760,24 @@ func (s *Storage) GetGameBySession(ctx context.Context, sessionID string) (*pb.G
 		return nil, err
 	}
 	return s.GetGame(ctx, id)
+}
+
+func (s *Storage) CountCardsByOwner(ctx context.Context, ownerID string) (int32, error) {
+	var count int32
+	err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM cards WHERE owner_id = $1", ownerID).Scan(&count)
+	return count, err
+}
+
+func (s *Storage) CountDecksByOwner(ctx context.Context, ownerID string) (int32, error) {
+	var count int32
+	err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM decks WHERE owner_id = $1", ownerID).Scan(&count)
+	return count, err
+}
+
+func (s *Storage) CountSessionsByOwner(ctx context.Context, ownerID string) (int32, error) {
+	var count int32
+	err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM sessions WHERE owner_id = $1", ownerID).Scan(&count)
+	return count, err
 }
 
 // Ensure Storage implements storage.Storage at compile time.

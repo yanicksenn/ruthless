@@ -1,1 +1,27 @@
 exports_files(["config.textproto"])
+
+load("@rules_oci//oci:defs.bzl", "oci_image", "oci_load", "oci_push")
+load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
+
+pkg_tar(
+    name = "config_tar",
+    srcs = ["config.textproto"],
+    package_dir = "/backend",
+)
+
+oci_image(
+    name = "image",
+    base = "@distroless_base",
+    entrypoint = ["/usr/local/bin/cah"],
+    tars = [
+        "//backend/cmd/cah:cah_tar",
+        ":config_tar",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+oci_load(
+    name = "tarball",
+    image = ":image",
+    repo_tags = ["backend:latest"],
+)

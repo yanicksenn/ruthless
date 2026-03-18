@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	pb "github.com/yanicksenn/ruthless/api/v1"
 	"github.com/yanicksenn/ruthless/backend/internal/storage"
@@ -18,6 +19,7 @@ type Storage struct {
 	sessions map[string]*pb.Session
 	decks    map[string]*pb.Deck
 	games    map[string]*pb.Game
+	revokedTokens map[string]time.Time
 }
 
 func New() *Storage {
@@ -27,6 +29,7 @@ func New() *Storage {
 		sessions: make(map[string]*pb.Session),
 		decks:    make(map[string]*pb.Deck),
 		games:    make(map[string]*pb.Game),
+		revokedTokens: make(map[string]time.Time),
 	}
 }
 
@@ -44,8 +47,21 @@ func (s *Storage) CreateCard(ctx context.Context, card *pb.Card) error {
 func (s *Storage) CreateUser(ctx context.Context, user *pb.User) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if _, ok := s.users[user.Id]; ok {
+		return storage.ErrAlreadyExists
+	}
 	if user.CreatedAt == nil {
 		user.CreatedAt = timestamppb.Now()
+	}
+	s.users[user.Id] = user
+	return nil
+}
+
+func (s *Storage) UpdateUser(ctx context.Context, user *pb.User) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, ok := s.users[user.Id]; !ok {
+		return storage.ErrNotFound
 	}
 	s.users[user.Id] = user
 	return nil
@@ -58,7 +74,34 @@ func (s *Storage) GetUser(ctx context.Context, id string) (*pb.User, error) {
 	if !ok {
 		return nil, storage.ErrNotFound
 	}
+	if user.Identifier == "" {
+		user.PendingCompletion = true
+	} else {
+		user.PendingCompletion = false
+	}
 	return user, nil
+}
+
+// -- Token Methods
+func (s *Storage) RevokeToken(ctx context.Context, token string, expiresAt time.Time) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.revokedTokens[token] = expiresAt
+	return nil
+}
+
+func (s *Storage) IsTokenRevoked(ctx context.Context, token string) (bool, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	exp, ok := s.revokedTokens[token]
+	if !ok {
+		return false, nil
+	}
+	// Note: in-memory we could lazily clean up expired blocks, but simple bool is fine
+	if exp.Before(time.Now()) {
+		return false, nil
+	}
+	return true, nil
 }
 
 func (s *Storage) GetCard(ctx context.Context, id string) (*pb.Card, error) {
@@ -172,13 +215,38 @@ func (s *Storage) UpdateSession(ctx context.Context, session *pb.Session) error 
 	return nil
 }
 
-func (s *Storage) ListSessions(ctx context.Context) ([]*pb.Session, error) {
+func (s *Storage) ListSessions(ctx context.Context, playerID string) ([]*pb.Session, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	list := make([]*pb.Session, 0, len(s.sessions))
+	list := make([]*pb.Session, 0)
 	for _, session := range s.sessions {
-		list = append(list, session)
+		// Find associated game
+		var game *pb.Game
+		for _, g := range s.games {
+			if g.SessionId == session.Id {
+				game = g
+				break
+			}
+		}
+
+		if game == nil {
+			continue
+		}
+
+		isParticipant := false
+		for _, pid := range session.PlayerIds {
+			if pid == playerID {
+				isParticipant = true
+				break
+			}
+		}
+
+		// Filter: WAITING or (PLAYING/JUDGING and participant)
+		if game.State == pb.GameState_GAME_STATE_WAITING ||
+			((game.State == pb.GameState_GAME_STATE_PLAYING || game.State == pb.GameState_GAME_STATE_JUDGING) && isParticipant) {
+			list = append(list, session)
+		}
 	}
 	return list, nil
 }
@@ -264,6 +332,42 @@ func (s *Storage) GetGameBySession(ctx context.Context, sessionID string) (*pb.G
 		}
 	}
 	return nil, storage.ErrNotFound
+}
+
+func (s *Storage) CountCardsByOwner(ctx context.Context, ownerID string) (int32, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var count int32
+	for _, c := range s.cards {
+		if c.OwnerId == ownerID {
+			count++
+		}
+	}
+	return count, nil
+}
+
+func (s *Storage) CountDecksByOwner(ctx context.Context, ownerID string) (int32, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var count int32
+	for _, d := range s.decks {
+		if d.OwnerId == ownerID {
+			count++
+		}
+	}
+	return count, nil
+}
+
+func (s *Storage) CountSessionsByOwner(ctx context.Context, ownerID string) (int32, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var count int32
+	for _, sess := range s.sessions {
+		if sess.OwnerId == ownerID {
+			count++
+		}
+	}
+	return count, nil
 }
 
 // Ensure Storage implements storage.Storage at compile time.

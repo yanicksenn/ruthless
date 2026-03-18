@@ -14,7 +14,7 @@ interface LobbyProps {
 
 export const Lobby: React.FC<LobbyProps> = ({ onJoinSession, activeSessionId }) => {
 
-  const { token, user, logout } = useAuth();
+  const { token, user, logout, limits } = useAuth();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [decks, setDecks] = useState<Deck[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,9 +59,9 @@ export const Lobby: React.FC<LobbyProps> = ({ onJoinSession, activeSessionId }) 
   };
 
 
-  const handleCreateSession = async (deckIds: string[]) => {
+  const handleCreateSession = async (deckIds: string[], name: string) => {
     try {
-      const response = await sessionClient.createSession({ deckIds }, createOptions(token));
+      const response = await sessionClient.createSession({ deckIds, name }, createOptions(token));
       setIsCreateModalOpen(false);
       onJoinSession(response.response.id);
     } catch (err) {
@@ -81,7 +81,9 @@ export const Lobby: React.FC<LobbyProps> = ({ onJoinSession, activeSessionId }) 
               <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs font-bold ring-1 ring-primary/30">
                 {user.name.slice(0, 2).toUpperCase()}
               </div>
-              <span className="text-gray-300 font-bold text-sm tracking-tight">{user.name}</span>
+              <span className="text-gray-300 font-bold text-sm tracking-tight">
+                {user.name}{user.identifier ? `#${user.identifier}` : ''}
+              </span>
             </div>
           )}
         </div>
@@ -130,7 +132,7 @@ export const Lobby: React.FC<LobbyProps> = ({ onJoinSession, activeSessionId }) 
               <h3 className={`text-xl font-bold mb-6 transition-colors ${
                 session.id === activeSessionId ? 'text-secondary' : 'group-hover:text-primary'
               }`}>
-                {session.ownerId.split('-')[0]}'s Session
+                {session.name}
               </h3>
               <div className="flex justify-between items-center">
                 <div className="flex -space-x-2">
@@ -166,6 +168,8 @@ export const Lobby: React.FC<LobbyProps> = ({ onJoinSession, activeSessionId }) 
         onClose={() => setIsCreateModalOpen(false)}
         onCreate={handleCreateSession}
         decks={decks}
+        defaultName={user ? `${user.name}'s Session` : 'New Session'}
+        limits={limits}
       />
     </div>
   );

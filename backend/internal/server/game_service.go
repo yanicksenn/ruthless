@@ -18,8 +18,8 @@ func (s *Server) createGameInternal(ctx context.Context, sessionID string) (*pb.
 	}
 
 	minPlayers := 2
-	if s.config != nil && s.config.Game != nil && s.config.Game.MinRequiredPlayers > 0 {
-		minPlayers = int(s.config.Game.MinRequiredPlayers)
+	if s.config != nil && s.config.Public != nil && s.config.Public.Game != nil && s.config.Public.Game.MinRequiredPlayers > 0 {
+		minPlayers = int(s.config.Public.Game.MinRequiredPlayers)
 	}
 
 	game := domain.NewGame(sessionID, uint32(minPlayers))
@@ -67,8 +67,8 @@ func (s *Server) StartGame(ctx context.Context, req *pb.StartGameRequest) (*pb.G
 	}
 
 	minPlayers := 2
-	if s.config != nil && s.config.Game != nil && s.config.Game.MinRequiredPlayers > 0 {
-		minPlayers = int(s.config.Game.MinRequiredPlayers)
+	if s.config != nil && s.config.Public != nil && s.config.Public.Game != nil && s.config.Public.Game.MinRequiredPlayers > 0 {
+		minPlayers = int(s.config.Public.Game.MinRequiredPlayers)
 	}
 
 	if err := s.syncGamePlayers(ctx, game, session); err != nil {

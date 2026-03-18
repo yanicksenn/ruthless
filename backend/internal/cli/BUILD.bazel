@@ -17,8 +17,6 @@ go_library(
     deps = [
         "//api/v1:ruthlespb_go_proto",
         "//backend/internal/auth",
-        "//backend/internal/auth/fake",
-        "//backend/internal/auth/jwt",
         "//backend/internal/config",
         "//backend/internal/server",
         "//backend/internal/storage",

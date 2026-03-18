@@ -50,26 +50,18 @@ func TestInteractiveRegistration(t *testing.T) {
 		t.Fatalf("Login failed: %v", err)
 	}
 
-	client := testutil.NewTestClient(*addr, "")
+	client := testutil.NewTestClient(*addr, "", nil)
 	defer client.Close()
 	
 	authCtx := testutil.WithAuthToken(ctx, idToken)
 
-	// 2. Register
-	t.Log("Registering user...")
-	user, err := client.UserClient.Register(authCtx, &pb.RegisterRequest{})
-	if err != nil {
-		t.Fatalf("Registration failed: %v", err)
-	}
-	t.Logf("Successfully registered: %s (ID: %s)", user.Name, user.Id)
-
-	// 3. Verify
-	t.Log("Verifying registration via GetMe...")
-	me, err := client.UserClient.GetMe(authCtx, &pb.GetMeRequest{})
+	// 2. Ensure registered
+	t.Log("Verifying user registration via GetMe...")
+	user, err := client.UserClient.GetMe(authCtx, &pb.GetMeRequest{})
 	if err != nil {
 		t.Fatalf("GetMe failed: %v", err)
 	}
-	t.Logf("GetMe verified: Hello, %s!", me.Name)
+	t.Logf("Successfully verified user: %s (ID: %s)", user.Name, user.Id)
 
-	t.Log("✅ Interactive Registration Successful!")
+	t.Log("✅ Registration/Login Verified Successful!")
 }

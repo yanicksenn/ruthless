@@ -17,9 +17,7 @@ services:
       - ruthless_data:/var/lib/postgresql/data
   
   backend:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
+    image: backend:latest
     restart: on-failure
     ports:
       - "8080:8080"
@@ -27,19 +25,18 @@ services:
       - STORAGE=postgres
       - DB_CONN_STR=postgres://ruthless_user:ruthless_password@db:5432/ruthless_prod?sslmode=disable
       - AUTH=${AUTH:-google}
-      - GOOGLE_AUDIENCE=${GOOGLE_AUDIENCE:-964146605436-cn068f6livloacebbi0itbhgvh9t5uns.apps.googleusercontent.com}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-964146605436-cn068f6livloacebbi0itbhgvh9t5uns.apps.googleusercontent.com}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-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}
+      - GOOGLE_REDIRECT_URL=${GOOGLE_REDIRECT_URL:-http://localhost:8080/auth/google/callback}
+      - UI_URL=${UI_URL:-http://localhost:3000}
+      - AUTH_SECRET=${AUTH_SECRET:-dev-secret}
     command: ["server"]
     depends_on:
       db:
         condition: service_healthy
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        - VITE_API_BASE_URL=http://localhost:8080
-        - VITE_GOOGLE_CLIENT_ID=${GOOGLE_AUDIENCE:-964146605436-cn068f6livloacebbi0itbhgvh9t5uns.apps.googleusercontent.com}
+    image: frontend:latest
     restart: on-failure
     ports:
       - "3000:80"

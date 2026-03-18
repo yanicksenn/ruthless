@@ -7,7 +7,7 @@ import { CreationDialog } from './CreationDialog';
 import { DeckEditor } from './DeckEditor';
 
 export const Decks: React.FC = () => {
-  const { token, user, logout } = useAuth();
+  const { token, user, logout, limits } = useAuth();
   const [decks, setDecks] = useState<Deck[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -133,6 +133,7 @@ export const Decks: React.FC = () => {
         placeholder="Enter a name for your collection..."
         label="Deck Name"
         submitLabel="Create Deck"
+        maxLength={limits?.maxDeckNameLength}
       />
     </div>
   );

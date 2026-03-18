@@ -16,9 +16,10 @@ func runGameTests(t *testing.T, ctx context.Context, c *testutil.TestClient, run
 
 	bobName := "GameBob_" + runID
 	bobCtx := c.GetAuthContext(ctx, bobName)
-	_, err := c.UserClient.Register(bobCtx, &pb.RegisterRequest{})
-	testutil.AssertSuccess(t, err, "Register Bob (Fake)")
-	_, err = c.UserClient.CompleteRegistration(bobCtx, &pb.CompleteRegistrationRequest{Name: bobName})
+	if c.Store != nil {
+		c.Store.CreateUser(ctx, &pb.User{Id: bobName, Name: bobName})
+	}
+	_, err := c.UserClient.CompleteRegistration(bobCtx, &pb.CompleteRegistrationRequest{Name: bobName})
 	testutil.AssertSuccess(t, err, "CompleteRegistration Bob (Fake)")
 
 	t.Log("\n--- Session & Game Flow Suite ---")
@@ -45,6 +46,17 @@ func runGameTests(t *testing.T, ctx context.Context, c *testutil.TestClient, run
 	// Verify deck is in session
 	if len(session.DeckIds) != 1 || session.DeckIds[0] != deck.Id {
 		t.Errorf("Expected 1 deck %s in session, got %v", deck.Id, session.DeckIds)
+	}
+	
+	// Verify default name and timestamp
+	expectedName := "Alice's Session"
+	if session.Name != expectedName {
+		t.Errorf("Expected session name %q, got %q", expectedName, session.Name)
+	}
+	if session.CreatedAt == nil {
+		t.Error("Expected CreatedAt to be set, but it's nil")
+	} else {
+		t.Logf("  [OK] Session %q created at %v", session.Name, session.CreatedAt.AsTime())
 	}
 
 	// 3. Join players

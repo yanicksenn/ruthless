@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Plus, Trash2, LogOut, Search, ArrowUpDown, ChevronDown, FolderPlus, Check, X } from 'lucide-react';
+import { Plus, Trash2, LogOut, Search, ArrowUpDown, ChevronDown, FolderPlus, Check, X, Layers } from 'lucide-react';
 import { cardClient, deckClient, createOptions } from '../api/client';
 import { Card, CardOrderField, Deck } from '../api/ruthless';
 import { CreationDialog } from './CreationDialog';
 
 export const Cards: React.FC = () => {
-  const { token, user, logout } = useAuth();
+  const { token, user, logout, limits } = useAuth();
   const [cards, setCards] = useState<Card[]>([]);
   const [decks, setDecks] = useState<Deck[]>([]);
   const [loading, setLoading] = useState(true);
@@ -181,85 +181,89 @@ export const Cards: React.FC = () => {
             </div>
           </div>
 
-          <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
-            {cards.map(card => {
-              const availableDecks = decks.filter(d => 
-                (d.ownerId === user?.id || (d.contributors || []).includes(user?.id || '')) &&
-                !(d.cardIds || []).includes(card.id)
-              );
-              
-              return (
-                <div key={card.id} className={`break-inside-avoid p-6 rounded-2xl border ${
-                  card.color === 1 
-                    ? 'bg-black text-white border-white/10 shadow-lg shadow-black/50' 
-                    : 'bg-white text-black border-black/5 shadow-xl'
-                } group relative`}>
-                  <p className="text-lg font-bold leading-tight pr-8">{card.text}</p>
-                  
-                  {/* Save to Deck Dropdown */}
-                  {activeCardIdDropdown === card.id && (
-                    <div className="absolute inset-0 z-20 bg-background/95 backdrop-blur-md rounded-2xl p-4 flex flex-col border border-primary/20 animate-in fade-in zoom-in duration-200">
-                      <div className="flex justify-between items-center mb-4 pb-2 border-b border-white/10">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-primary">Add to Deck</span>
-                        <button onClick={() => setActiveCardIdDropdown(null)} className="text-gray-500 hover:text-white transition-colors">
-                          <X size={16} />
-                        </button>
+          {cards.length > 0 ? (
+            <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
+              {cards.map(card => {
+                const availableDecks = decks.filter(d => 
+                  (d.ownerId === user?.id || (d.contributors || []).includes(user?.id || '')) &&
+                  !(d.cardIds || []).includes(card.id)
+                );
+                
+                return (
+                  <div key={card.id} className={`break-inside-avoid p-6 rounded-2xl border ${
+                    card.color === 1 
+                      ? 'bg-black text-white border-white/10 shadow-lg shadow-black/50' 
+                      : 'bg-white text-black border-black/5 shadow-xl'
+                  } group relative`}>
+                    <p className="text-lg font-bold leading-tight pr-8">{card.text}</p>
+                    
+                    {/* Save to Deck Dropdown */}
+                    {activeCardIdDropdown === card.id && (
+                      <div className="absolute inset-0 z-20 bg-background/95 backdrop-blur-md rounded-2xl p-4 flex flex-col border border-primary/20 animate-in fade-in zoom-in duration-200">
+                        <div className="flex justify-between items-center mb-4 pb-2 border-b border-white/10">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-primary">Add to Deck</span>
+                          <button onClick={() => setActiveCardIdDropdown(null)} className="text-gray-500 hover:text-white transition-colors">
+                            <X size={16} />
+                          </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto space-y-1 custom-scrollbar">
+                          {availableDecks.length === 0 ? (
+                            <div className="h-full flex items-center justify-center text-center p-4">
+                              <p className="text-xs text-gray-500 font-bold italic">Already in all your decks or no decks available.</p>
+                            </div>
+                          ) : (
+                            availableDecks.map(deck => (
+                              <button
+                                key={deck.id}
+                                onClick={() => handleAddToDeck(card.id, deck.id)}
+                                className="w-full text-left p-3 rounded-xl hover:bg-primary/10 text-white transition-all flex items-center justify-between group/deck"
+                              >
+                                <span className="text-sm font-bold truncate pr-2">{deck.name}</span>
+                                <Check size={14} className="text-primary opacity-0 group-hover/deck:opacity-100 transition-opacity" />
+                              </button>
+                            ))
+                          )}
+                        </div>
                       </div>
-                      <div className="flex-1 overflow-y-auto space-y-1 custom-scrollbar">
-                        {availableDecks.length === 0 ? (
-                          <div className="h-full flex items-center justify-center text-center p-4">
-                            <p className="text-xs text-gray-500 font-bold italic">Already in all your decks or no decks available.</p>
-                          </div>
-                        ) : (
-                          availableDecks.map(deck => (
-                            <button
-                              key={deck.id}
-                              onClick={() => handleAddToDeck(card.id, deck.id)}
-                              className="w-full text-left p-3 rounded-xl hover:bg-primary/10 text-white transition-all flex items-center justify-between group/deck"
-                            >
-                              <span className="text-sm font-bold truncate pr-2">{deck.name}</span>
-                              <Check size={14} className="text-primary opacity-0 group-hover/deck:opacity-100 transition-opacity" />
-                            </button>
-                          ))
+                    )}
+
+                    <div className="mt-6 flex justify-between items-center opacity-40 group-hover:opacity-100 transition-all">
+                      <div className="flex items-center gap-3">
+                        <span className="text-[10px] font-black tracking-widest uppercase">
+                          {card.color === 1 ? 'Black Card' : 'White Card'}
+                        </span>
+                        {user && (
+                          <button 
+                            onClick={() => setActiveCardIdDropdown(card.id)}
+                            className="p-1.5 hover:bg-primary/10 hover:text-primary rounded-lg transition-all"
+                            title="Save to Deck"
+                          >
+                            <FolderPlus size={16} />
+                          </button>
                         )}
                       </div>
-                    </div>
-                  )}
-
-                  <div className="mt-6 flex justify-between items-center opacity-40 group-hover:opacity-100 transition-all">
-                    <div className="flex items-center gap-3">
-                      <span className="text-[10px] font-black tracking-widest uppercase">
-                        {card.color === 1 ? 'Black Card' : 'White Card'}
-                      </span>
-                      {user && (
+                      {user && card.ownerId === user.id && (
                         <button 
-                          onClick={() => setActiveCardIdDropdown(card.id)}
-                          className="p-1.5 hover:bg-primary/10 hover:text-primary rounded-lg transition-all"
-                          title="Save to Deck"
+                          onClick={() => handleDelete(card.id)}
+                          className="p-1.5 hover:bg-red-500/10 hover:text-red-500 transition-all"
+                          title="Delete Card"
                         >
-                          <FolderPlus size={16} />
+                          <Trash2 size={16} />
                         </button>
                       )}
                     </div>
-                    {user && card.ownerId === user.id && (
-                      <button 
-                        onClick={() => handleDelete(card.id)}
-                        className="p-1.5 hover:bg-red-500/10 hover:text-red-500 transition-all"
-                        title="Delete Card"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    )}
                   </div>
-                </div>
-              );
-            })}
-            {cards.length === 0 && (
-              <div className="md:col-span-3 py-20 text-center">
-                <p className="text-gray-500 font-bold italic">No cards found. Go ahead, write something terrible.</p>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <div className="p-4 bg-white/5 rounded-full mb-4">
+                <Layers size={48} className="text-gray-700" />
               </div>
-            )}
-          </div>
+              <p className="text-gray-500 font-bold italic mb-6">No cards created yet. Write something terrible!</p>
+            </div>
+          )}
 
           {totalPages > 1 && (
             <div className="mt-12 flex justify-center items-center gap-6">
@@ -293,6 +297,7 @@ export const Cards: React.FC = () => {
         placeholder="Enter the text of your misery (use ___ for blanks)..."
         label="Card Text"
         submitLabel="Create Card"
+        maxLength={limits?.maxCardTextLength}
       />
     </div>
   );

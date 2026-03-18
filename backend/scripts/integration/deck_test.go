@@ -15,9 +15,10 @@ func runDeckTests(t *testing.T, ctx context.Context, c *testutil.TestClient, run
 
 	bobName := "DeckBob_" + runID
 	bobCtx := c.GetAuthContext(ctx, bobName)
-	_, err := c.UserClient.Register(bobCtx, &pb.RegisterRequest{})
-	testutil.AssertSuccess(t, err, "Register Bob (Fake)")
-	_, err = c.UserClient.CompleteRegistration(bobCtx, &pb.CompleteRegistrationRequest{Name: bobName})
+	if c.Store != nil {
+		c.Store.CreateUser(ctx, &pb.User{Id: bobName, Name: bobName})
+	}
+	_, err := c.UserClient.CompleteRegistration(bobCtx, &pb.CompleteRegistrationRequest{Name: bobName})
 	testutil.AssertSuccess(t, err, "CompleteRegistration Bob (Fake)")
 
 	t.Log("\n--- Deck & Card Suite ---")
@@ -32,7 +33,7 @@ func runDeckTests(t *testing.T, ctx context.Context, c *testutil.TestClient, run
 	t.Logf("  [RUN] Unregistered User (%s) creates card...", charlieName)
 	charlieCtx := c.GetAuthContext(ctx, charlieName)
 	_, err = c.CardClient.CreateCard(charlieCtx, &pb.CreateCardRequest{Text: "Charlie's Ghost"})
-	testutil.AssertError(t, err, codes.PermissionDenied, "user not registered")
+	testutil.AssertError(t, err, codes.Unauthenticated, "user profile not found")
 
 	// 3. Alice creates a deck
 	t.Log("  [RUN] Alice creates deck...")
@@ -71,7 +72,9 @@ func runDeckTests(t *testing.T, ctx context.Context, c *testutil.TestClient, run
 
 	// 9. FAILURE: Non-contributor Charlie tries to remove card
 	t.Log("  [RUN] Charlie tries to remove Bob's card...")
-	_, _ = c.UserClient.Register(charlieCtx, &pb.RegisterRequest{}) // Register charlie now
+	if c.Store != nil {
+		c.Store.CreateUser(ctx, &pb.User{Id: charlieName, Name: charlieName})
+	}
 	_, _ = c.UserClient.CompleteRegistration(charlieCtx, &pb.CompleteRegistrationRequest{Name: charlieName})
 	_, err = c.DeckClient.RemoveCardFromDeck(charlieCtx, &pb.RemoveCardFromDeckRequest{DeckId: deck.Id, CardId: bobCard.Id})
 	testutil.AssertError(t, err, codes.PermissionDenied, "not authorized")

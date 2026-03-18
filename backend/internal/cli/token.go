@@ -138,12 +138,17 @@ var registerCmd = &cobra.Command{
 			ctx = metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+token)
 		}
 
-		user, err := client.Register(ctx, &pb.RegisterRequest{})
-		if err != nil {
-			log.Fatalf("Registration failed: %v", err)
-		}
+	user, err := client.GetMe(ctx, &pb.GetMeRequest{})
+	if err != nil {
+		log.Fatalf("Retrieving user info failed: %v", err)
+	}
 
-		fmt.Printf("Successfully registered: %s (ID: %s)\n", user.Name, user.Id)
+	fmt.Printf("User: %s (ID: %s)\n", user.Name, user.Id)
+	if user.PendingCompletion {
+		fmt.Println("Status: PENDING REGISTRATION COMPLETION (Run 'cah user complete' if implemented, or use the UI)")
+	} else {
+		fmt.Printf("Status: ACTIVE (Alias: %s)\n", user.Identifier)
+	}
 	},
 }
 

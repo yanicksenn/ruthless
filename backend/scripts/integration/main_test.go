@@ -9,6 +9,7 @@ import (
 
 	"github.com/yanicksenn/ruthless/backend/scripts/testutil"
 	pb "github.com/yanicksenn/ruthless/api/v1"
+	"github.com/yanicksenn/ruthless/backend/internal/storage"
 )
 
 var (
@@ -25,35 +26,35 @@ func TestIntegration(t *testing.T) {
 
 	var connectAddr string
 	var cleanup func()
-
+	var store storage.Storage
 	if *addr != "" {
 		connectAddr = *addr
 	} else {
 		var err error
-		connectAddr, _, cleanup, err = testutil.StartTestServer(ctx, "")
+		connectAddr, store, cleanup, err = testutil.StartTestServer(ctx, "")
 		if err != nil {
 			t.Fatalf("Failed to start test server: %v", err)
 		}
 		defer cleanup()
 	}
 
-	client := testutil.NewTestClient(connectAddr, "")
+	client := testutil.NewTestClient(connectAddr, "", store)
 	defer client.Close()
 
 	// Initialize Alice
-	aliceCtx := client.GetAuthContext(ctx, "Alice")
-	if _, err := client.UserClient.Register(aliceCtx, &pb.RegisterRequest{}); err != nil {
-		t.Fatalf("Failed to register Alice: %v", err)
+	if store != nil {
+		store.CreateUser(ctx, &pb.User{Id: "Alice", Name: "Alice"})
 	}
+	aliceCtx := client.GetAuthContext(ctx, "Alice")
 	if _, err := client.UserClient.CompleteRegistration(aliceCtx, &pb.CompleteRegistrationRequest{Name: "Alice"}); err != nil {
 		t.Fatalf("Failed to complete registration for Alice: %v", err)
 	}
 
 	// Initialize Bob
-	bobCtx := client.GetAuthContext(ctx, "Bob")
-	if _, err := client.UserClient.Register(bobCtx, &pb.RegisterRequest{}); err != nil {
-		t.Fatalf("Failed to register Bob: %v", err)
+	if store != nil {
+		store.CreateUser(ctx, &pb.User{Id: "Bob", Name: "Bob"})
 	}
+	bobCtx := client.GetAuthContext(ctx, "Bob")
 	if _, err := client.UserClient.CompleteRegistration(bobCtx, &pb.CompleteRegistrationRequest{Name: "Bob"}); err != nil {
 		t.Fatalf("Failed to complete registration for Bob: %v", err)
 	}

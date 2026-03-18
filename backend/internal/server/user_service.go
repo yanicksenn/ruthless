@@ -13,31 +13,6 @@ import (
 	"github.com/yanicksenn/ruthless/backend/internal/storage"
 )
 
-func (s *Server) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.User, error) {
-	player, ok := getPlayer(ctx)
-	if !ok {
-		return nil, status.Errorf(codes.Unauthenticated, "unauthorized")
-	}
-
-	name := req.Name
-	if name == "" {
-		name = player.Name
-	}
-
-	user := &pb.User{
-		Id:   player.Id,
-		Name: name,
-		// Identifier remains empty -> pending_completion
-	}
-
-	if err := s.store.CreateUser(ctx, user); err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to create user")
-	}
-
-	user.PendingCompletion = true
-	return user, nil
-}
-
 func (s *Server) CompleteRegistration(ctx context.Context, req *pb.CompleteRegistrationRequest) (*pb.User, error) {
 	player, ok := getPlayer(ctx)
 	if !ok {
@@ -48,7 +23,16 @@ func (s *Server) CompleteRegistration(ctx context.Context, req *pb.CompleteRegis
 		return nil, status.Errorf(codes.InvalidArgument, "name is required")
 	}
 
-	maxRetries := int(s.config.GetRegistration().GetMaxUniqueIdentifierRecreations())
+	if s.config != nil && s.config.Public != nil && s.config.Public.Limits != nil {
+		if s.config.Public.Limits.MinUserNameLength > 0 && uint32(len(req.Name)) < s.config.Public.Limits.MinUserNameLength {
+			return nil, status.Errorf(codes.InvalidArgument, "name is too short (minimum %d characters)", s.config.Public.Limits.MinUserNameLength)
+		}
+		if s.config.Public.Limits.MaxUserNameLength > 0 && uint32(len(req.Name)) > s.config.Public.Limits.MaxUserNameLength {
+			return nil, status.Errorf(codes.InvalidArgument, "name is too long (maximum %d characters)", s.config.Public.Limits.MaxUserNameLength)
+		}
+	}
+
+	maxRetries := int(s.config.GetPublic().GetRegistration().GetMaxUniqueIdentifierRecreations())
 	if maxRetries == 0 {
 		maxRetries = 10
 	}
@@ -68,12 +52,17 @@ func (s *Server) CompleteRegistration(ctx context.Context, req *pb.CompleteRegis
 			Identifier: identifier,
 		}
 
-		err = s.store.CreateUser(ctx, user)
+		err = s.store.UpdateUser(ctx, user)
 		if err == nil {
 			// Success!
-			user.Name = fmt.Sprintf("%s#%s", user.Name, user.Identifier)
-			user.PendingCompletion = false
-			return user, nil
+			// Return a copy to avoid in-place modification of the object in the store (e.g. for memory store)
+			return &pb.User{
+				Id:                user.Id,
+				Name:              user.Name,
+				Identifier:        user.Identifier,
+				CreatedAt:         user.CreatedAt,
+				PendingCompletion: false,
+			}, nil
 		}
 
 		if err != storage.ErrAlreadyExists {
@@ -95,14 +84,18 @@ func (s *Server) GetMe(ctx context.Context, req *pb.GetMeRequest) (*pb.User, err
 		return nil, status.Errorf(codes.NotFound, "user not found")
 	}
 
-	if user.Identifier == "" {
-		user.PendingCompletion = true
-	} else {
-		user.Name = fmt.Sprintf("%s#%s", user.Name, user.Identifier)
-		user.PendingCompletion = false
+	if user.PendingCompletion {
+		return user, nil
 	}
 
-	return user, nil
+	// Return a copy with concatenated name (to avoid in-place modification for memory store)
+	return &pb.User{
+		Id:                user.Id,
+		Name:              user.Name,
+		Identifier:        user.Identifier,
+		CreatedAt:         user.CreatedAt,
+		PendingCompletion: false,
+	}, nil
 }
 
 func generateIdentifier() (string, error) {

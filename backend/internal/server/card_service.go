@@ -28,9 +28,21 @@ func (s *Server) CreateCard(ctx context.Context, req *pb.CreateCardRequest) (*pb
 	}
 	ownerID := player.Id
 
-	if s.config != nil && s.config.Limits != nil && s.config.Limits.CardTextLimit > 0 {
-		if uint32(len(req.Text)) > s.config.Limits.CardTextLimit {
-			return nil, status.Errorf(codes.InvalidArgument, "card text exceeds limit of %d characters", s.config.Limits.CardTextLimit)
+	if s.config != nil && s.config.Public != nil && s.config.Public.Limits != nil {
+		// Limit text length
+		if s.config.Public.Limits.MaxCardTextLength > 0 && uint32(len(req.Text)) > s.config.Public.Limits.MaxCardTextLength {
+			return nil, status.Errorf(codes.InvalidArgument, "card text exceeds limit of %d characters", s.config.Public.Limits.MaxCardTextLength)
+		}
+
+		// Limit total cards per user
+		if s.config.Public.Limits.MaxCardsPerUser > 0 {
+			count, err := s.store.CountCardsByOwner(ctx, ownerID)
+			if err != nil {
+				return nil, status.Errorf(codes.Internal, "failed to check card count: %v", err)
+			}
+			if uint32(count) >= s.config.Public.Limits.MaxCardsPerUser {
+				return nil, status.Errorf(codes.ResourceExhausted, "maximum number of cards (%d) reached", s.config.Public.Limits.MaxCardsPerUser)
+			}
 		}
 	}
 

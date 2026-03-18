@@ -9,6 +9,8 @@ interface CreationDialogProps {
   placeholder: string;
   label: string;
   submitLabel: string;
+  maxLength?: number;
+  minLength?: number;
 }
 
 export const CreationDialog: React.FC<CreationDialogProps> = ({
@@ -18,10 +20,14 @@ export const CreationDialog: React.FC<CreationDialogProps> = ({
   title,
   placeholder,
   label,
-  submitLabel
+  submitLabel,
+  maxLength,
+  minLength = 1
 }) => {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [value, setValue] = useState('');
+
+  const isInvalid = (maxLength && value.length > maxLength) || (value.trim().length < minLength && value.length > 0);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -70,17 +76,31 @@ export const CreationDialog: React.FC<CreationDialogProps> = ({
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <label className="text-gray-500 text-xs font-black uppercase tracking-widest pl-1">
-              {label}
-            </label>
+            <div className="flex justify-between items-end pl-1">
+              <label className="text-gray-500 text-xs font-black uppercase tracking-widest">
+                {label}
+              </label>
+              {maxLength && (
+                <span className={`text-[10px] font-black ${value.length > maxLength ? 'text-red-400' : 'text-gray-500'}`}>
+                  {value.length} / {maxLength}
+                </span>
+              )}
+            </div>
             <textarea
               autoFocus
               value={value}
               onChange={(e) => setValue(e.target.value)}
               placeholder={placeholder}
               rows={3}
-              className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all placeholder:text-gray-700 font-bold resize-none"
+              className={`w-full bg-white/5 border rounded-2xl px-5 py-4 text-white focus:outline-none focus:ring-2 transition-all placeholder:text-gray-700 font-bold resize-none ${
+                isInvalid ? 'border-red-500/50 focus:ring-red-500/20' : 'border-white/10 focus:ring-primary/50'
+              }`}
             />
+            {maxLength && value.length > maxLength && (
+              <p className="text-[10px] text-red-400 font-black uppercase tracking-wider pl-1 font-mono">
+                Exceeds maximum length of {maxLength}
+              </p>
+            )}
           </div>
 
           <div className="flex gap-3 pt-2">
@@ -93,7 +113,7 @@ export const CreationDialog: React.FC<CreationDialogProps> = ({
             </button>
             <button
               type="submit"
-              disabled={!value.trim()}
+              disabled={!value.trim() || isInvalid}
               className="flex-1 bg-primary hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed text-black font-black px-6 py-4 rounded-2xl flex items-center justify-center gap-2 transition-all transform hover:scale-[1.02] shadow-lg shadow-primary/20 uppercase tracking-widest text-sm"
             >
               <PlusCircle size={18} />

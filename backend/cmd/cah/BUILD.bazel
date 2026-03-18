@@ -14,3 +14,12 @@ go_binary(
     embed = [":cah_lib"],
     visibility = ["//visibility:public"],
 )
+
+load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
+
+pkg_tar(
+    name = "cah_tar",
+    srcs = [":cah"],
+    package_dir = "/usr/local/bin",
+    visibility = ["//visibility:public"],
+)

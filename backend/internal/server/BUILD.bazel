@@ -16,7 +16,6 @@ go_library(
     deps = [
         "//api/v1:ruthlespb_go_proto",
         "//backend/internal/auth",
-        "//backend/internal/auth/fake",
         "//backend/internal/domain",
         "//backend/internal/storage",
         "@org_golang_google_grpc//:grpc",

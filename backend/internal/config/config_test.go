@@ -12,7 +12,7 @@ import (
 func TestLoad(t *testing.T) {
 	content := `
 limits {
-  card_text_limit: 123
+  max_card_text_length: 123
 }
 `
 	tmpfile, err := os.CreateTemp("", "config.*.textproto")
@@ -28,7 +28,7 @@ limits {
 	require.NoError(t, err)
 	require.NotNil(t, cfg)
 	require.NotNil(t, cfg.Limits)
-	assert.Equal(t, uint32(123), cfg.Limits.CardTextLimit)
+	assert.Equal(t, uint32(123), cfg.Limits.MaxCardTextLength)
 }
 
 func TestLoad_FileNotFound(t *testing.T) {

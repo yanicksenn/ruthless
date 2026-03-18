@@ -28,7 +28,7 @@ func TestServer_CreateDeck(t *testing.T) {
 	auth := &mockAuth{player: player}
 	srv := server.New(store, auth, &pb.Config{})
 
-	ctx := context.WithValue(context.Background(), server.PlayerContextKey, player)
+	ctx := context.WithValue(context.Background(), server.PlayerKey{}, player)
 	req := &pb.CreateDeckRequest{Name: "My New Deck"}
 
 	resp, err := srv.CreateDeck(ctx, req)
@@ -53,7 +53,7 @@ func TestServer_AddCardToDeck(t *testing.T) {
 	err = store.CreateCard(context.Background(), card)
 	require.NoError(t, err)
 
-	ctx := context.WithValue(context.Background(), server.PlayerContextKey, player)
+	ctx := context.WithValue(context.Background(), server.PlayerKey{}, player)
 	req := &pb.AddCardToDeckRequest{
 		DeckId: deck.Id,
 		CardId: card.Id,
@@ -84,7 +84,7 @@ func TestServer_JoinSession(t *testing.T) {
 	err = store.CreateUser(context.Background(), &pb.User{Id: player.Id, Name: player.Name})
 	require.NoError(t, err)
 
-	ctx := context.WithValue(context.Background(), server.PlayerContextKey, player)
+	ctx := context.WithValue(context.Background(), server.PlayerKey{}, player)
 
 	req := &pb.JoinSessionRequest{
 		SessionId:  session.Id,
@@ -114,7 +114,7 @@ func TestServer_DeleteCard(t *testing.T) {
 	store.CreateCard(context.Background(), card)
 
 	// Alice deletes her own card
-	ctxAlice := context.WithValue(context.Background(), server.PlayerContextKey, alice)
+	ctxAlice := context.WithValue(context.Background(), server.PlayerKey{}, alice)
 	_, err := srv.DeleteCard(ctxAlice, &pb.DeleteCardRequest{Id: card.Id})
 	require.NoError(t, err)
 
@@ -135,19 +135,139 @@ func TestServer_CreateCard_Limit(t *testing.T) {
 	auth := &mockAuth{player: alice}
 	cfg := &pb.Config{
 		Limits: &pb.Config_Limits{
-			CardTextLimit: 10,
+			MaxCardTextLength: 10,
+			MaxCardsPerUser:   2,
 		},
 	}
 	srv := server.New(store, auth, cfg)
 
-	ctx := context.WithValue(context.Background(), server.PlayerContextKey, alice)
+	ctx := context.WithValue(context.Background(), server.PlayerKey{}, alice)
 
 	// Under limit
 	_, err := srv.CreateCard(ctx, &pb.CreateCardRequest{Text: "Short"})
 	assert.NoError(t, err)
 
-	// Over limit
+	// Over text limit
 	_, err = srv.CreateCard(ctx, &pb.CreateCardRequest{Text: "This is way too long"})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "card text exceeds limit of 10 characters")
+
+	// Create second card (success)
+	_, err = srv.CreateCard(ctx, &pb.CreateCardRequest{Text: "Ok"})
+	assert.NoError(t, err)
+
+	// Over count limit
+	_, err = srv.CreateCard(ctx, &pb.CreateCardRequest{Text: "Third"})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "maximum number of cards (2) reached")
+}
+
+func TestServer_CreateDeck_Limit(t *testing.T) {
+	store := memory.New()
+	alice := domain.NewPlayer("Alice")
+	auth := &mockAuth{player: alice}
+	cfg := &pb.Config{
+		Limits: &pb.Config_Limits{
+			MaxDeckNameLength: 10,
+			MaxDecksPerUser:   1,
+		},
+	}
+	srv := server.New(store, auth, cfg)
+
+	ctx := context.WithValue(context.Background(), server.PlayerKey{}, alice)
+
+	// Under limit
+	_, err := srv.CreateDeck(ctx, &pb.CreateDeckRequest{Name: "Deck 1"})
+	assert.NoError(t, err)
+
+	// Over count limit
+	_, err = srv.CreateDeck(ctx, &pb.CreateDeckRequest{Name: "Deck 2"})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "maximum number of decks (1) reached")
+
+	// Over name limit
+	// Reset store and use a new server with higher deck count limit but same name limit
+	store2 := memory.New()
+	srv2 := server.New(store2, auth, &pb.Config{
+		Limits: &pb.Config_Limits{MaxDeckNameLength: 5, MaxDecksPerUser: 10},
+	})
+	_, err = srv2.CreateDeck(ctx, &pb.CreateDeckRequest{Name: "Too Long"})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "deck name exceeds limit of 5 characters")
+}
+
+func TestServer_CompleteRegistration_Limit(t *testing.T) {
+	store := memory.New()
+	alice := &pb.Player{Id: "alice-1", Name: "Alice"}
+	auth := &mockAuth{player: alice}
+	cfg := &pb.Config{
+		Limits: &pb.Config_Limits{
+			MinUserNameLength: 3,
+			MaxUserNameLength: 8,
+		},
+	}
+	srv := server.New(store, auth, cfg)
+
+	ctx := context.WithValue(context.Background(), server.PlayerKey{}, alice)
+
+	// Pre-create user in store (pending completion)
+	err := store.CreateUser(ctx, &pb.User{Id: alice.Id, Name: alice.Name})
+	require.NoError(t, err)
+
+	// Too short
+	_, err = srv.CompleteRegistration(ctx, &pb.CompleteRegistrationRequest{Name: "Al"})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "name is too short")
+
+	// Too long
+	_, err = srv.CompleteRegistration(ctx, &pb.CompleteRegistrationRequest{Name: "Alice Wonderland"})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "name is too long")
+
+	// OK
+	_, err = srv.CompleteRegistration(ctx, &pb.CompleteRegistrationRequest{Name: "Alice"})
+	assert.NoError(t, err)
+}
+
+func TestServer_CreateSession_Limit(t *testing.T) {
+	store := memory.New()
+	alice := &pb.Player{Id: "alice-1", Name: "Alice"}
+	auth := &mockAuth{player: alice}
+	cfg := &pb.Config{
+		Limits: &pb.Config_Limits{
+			MaxSessionNameLength: 10,
+			MaxSessionsPerUser:   1,
+			MaxCardsPerSession:   10,
+		},
+	}
+	srv := server.New(store, auth, cfg)
+
+	ctx := context.WithValue(context.Background(), server.PlayerKey{}, alice)
+	require.NoError(t, store.CreateUser(ctx, &pb.User{Id: alice.Id, Name: alice.Name}))
+
+	// Create a deck for testing
+	deck := &pb.Deck{Id: "deck-1", Name: "My Deck", OwnerId: alice.Id, CardIds: []string{"c1", "c2", "c3", "c4", "c5", "c6"}}
+	require.NoError(t, store.CreateDeck(ctx, deck))
+
+	// Under limit
+	_, err := srv.CreateSession(ctx, &pb.CreateSessionRequest{Name: "S1", DeckIds: []string{"deck-1"}})
+	assert.NoError(t, err)
+
+	// Over count limit
+	_, err = srv.CreateSession(ctx, &pb.CreateSessionRequest{Name: "S2"})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "maximum number of sessions (1) reached")
+
+	// Over card limit
+	// Reset store and use a new server with higher session count limit
+	store2 := memory.New()
+	require.NoError(t, store2.CreateUser(ctx, &pb.User{Id: alice.Id, Name: alice.Name}))
+	require.NoError(t, store2.CreateDeck(ctx, &pb.Deck{Id: "large-deck", Name: "Large", OwnerId: alice.Id, CardIds: make([]string, 11)}))
+	
+	srv2 := server.New(store2, auth, &pb.Config{
+		Limits: &pb.Config_Limits{MaxSessionsPerUser: 10, MaxCardsPerSession: 10},
+	})
+	_, err = srv2.CreateSession(ctx, &pb.CreateSessionRequest{Name: "Too Big", DeckIds: []string{"large-deck"}})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "total cards in session (11) exceeds limit of 10")
 }

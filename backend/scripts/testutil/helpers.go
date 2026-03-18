@@ -17,9 +17,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	pb "github.com/yanicksenn/ruthless/api/v1"
-	ruthlessauth "github.com/yanicksenn/ruthless/backend/internal/auth"
-	"github.com/yanicksenn/ruthless/backend/internal/auth/fake"
-	ruthlessjwt "github.com/yanicksenn/ruthless/backend/internal/auth/jwt"
+	"github.com/yanicksenn/ruthless/backend/internal/auth"
 	"github.com/yanicksenn/ruthless/backend/internal/server"
 	"github.com/yanicksenn/ruthless/backend/internal/storage"
 	"github.com/yanicksenn/ruthless/backend/internal/storage/memory"
@@ -34,9 +32,10 @@ type TestClient struct {
 	UserClient       pb.UserServiceClient
 	AuthSecret       string
 	UserTokenSources map[string]oauth2.TokenSource
+	Store            storage.Storage
 }
 
-func NewTestClient(addr, authSecret string) *TestClient {
+func NewTestClient(addr string, authSecret string, store storage.Storage) *TestClient {
 	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
@@ -51,6 +50,7 @@ func NewTestClient(addr, authSecret string) *TestClient {
 		UserClient:    pb.NewUserServiceClient(conn),
 		AuthSecret:    authSecret,
 		UserTokenSources: make(map[string]oauth2.TokenSource),
+		Store:         store,
 	}
 }
 
@@ -63,19 +63,7 @@ func (c *TestClient) Close() {
 func StartTestServer(ctx context.Context, googleAudience string) (string, storage.Storage, func(), error) {
 	store := memory.New()
 	
-	var authenticator ruthlessauth.Authenticator
-	if googleAudience != "" {
-		googleAuth, err := ruthlessjwt.NewGoogle(ctx, googleAudience)
-		if err != nil {
-			return "", nil, nil, fmt.Errorf("failed to init google auth: %v", err)
-		}
-		authenticator = &flexibleAuthenticator{
-			google: googleAuth,
-			fake:   fake.New(),
-		}
-	} else {
-		authenticator = fake.New()
-	}
+	authenticator := auth.NewFakeAuthenticator()
 
 	srv := server.New(store, authenticator, &pb.Config{})
 	listener, err := net.Listen("tcp", "localhost:0")
@@ -103,20 +91,6 @@ func StartTestServer(ctx context.Context, googleAudience string) (string, storag
 	return addr, store, cleanup, nil
 }
 
-type flexibleAuthenticator struct {
-	google ruthlessauth.Authenticator
-	fake   ruthlessauth.Authenticator
-}
-
-func (a *flexibleAuthenticator) Authenticate(ctx context.Context, token string) (*pb.Player, error) {
-	// Try Google first
-	p, err := a.google.Authenticate(ctx, token)
-	if err == nil {
-		return p, nil
-	}
-	// Fallback to Fake
-	return a.fake.Authenticate(ctx, token)
-}
 
 func (c *TestClient) GetAuthContextForUser(ctx context.Context, name string) (context.Context, error) {
 	ts, ok := c.UserTokenSources[name]
@@ -169,14 +143,9 @@ func (c *TestClient) EnsureUserRegistered(ctx context.Context, name string, stor
 
 	// External server: use API
 	authCtx := WithAuthToken(ctx, idToken)
-	_, err = c.UserClient.Register(authCtx, &pb.RegisterRequest{})
+	_, err = c.UserClient.GetMe(authCtx, &pb.GetMeRequest{})
 	if err != nil {
-		// If registration failed, verify if the user already exists
-		_, getErr := c.UserClient.GetMe(authCtx, &pb.GetMeRequest{})
-		if getErr == nil {
-			return sub, nil // User exists, we're good
-		}
-		return "", fmt.Errorf("failed to ensure %s is registered: %v (GetMe failed with: %v)", name, err, getErr)
+		return "", fmt.Errorf("failed to ensure %s is registered: %v", name, err)
 	}
 
 	return sub, nil

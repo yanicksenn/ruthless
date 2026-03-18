@@ -1,14 +1,15 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { userClient, cardClient, createOptions } from '../api/client';
 import { User } from '../api/ruthless';
+import { ConfigPublic_Limits } from '../api/config';
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
   loading: boolean;
   isDevelopment: boolean;
-  login: (token: string) => Promise<void>;
-  register: (token: string, name?: string) => Promise<void>;
+  limits: ConfigPublic_Limits | null;
+  loginWithToken: (token: string) => void;
   completeRegistration: (name: string) => Promise<void>;
   logout: () => void;
 }
@@ -20,17 +21,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [token, setToken] = useState<string | null>(localStorage.getItem('ruthless_token'));
   const [loading, setLoading] = useState(true);
   const [isDevelopment, setIsDevelopment] = useState(false);
+  const [limits, setLimits] = useState<ConfigPublic_Limits | null>(null);
 
   useEffect(() => {
     const fetchConfig = async () => {
       try {
         const response = await cardClient.getConfig({}, {});
-        setIsDevelopment(response.response.isDevelopment);
+        // GetConfig now returns ConfigPublic, so fields are directly on the response
+        setIsDevelopment(response.response.isDevelopment || false);
+        if (response.response.limits) {
+          setLimits(response.response.limits);
+        }
+
       } catch (error) {
         console.error('Failed to fetch server config:', error);
       }
     };
     fetchConfig();
+
+    // Check search params first for backwards compatibility
+    const params = new URLSearchParams(window.location.search);
+    let urlToken = params.get('token');
+
+    // Also check hash fragment
+    if (!urlToken && window.location.hash) {
+      // Remove the leading '#'
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      urlToken = hashParams.get('token');
+    }
+
+    if (urlToken) {
+      setToken(urlToken);
+      localStorage.setItem('ruthless_token', urlToken);
+      
+      // Remove token from URL
+      const url = new URL(window.location.href);
+      url.searchParams.delete('token');
+      url.hash = ''; // Clear hash
+      window.history.replaceState({}, '', url.toString());
+    }
   }, []);
 
   const fetchUser = async (authToken: string) => {
@@ -55,35 +84,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [token]);
 
-  const login = async (newToken: string) => {
-    setLoading(true);
-    try {
-      const response = await userClient.getMe({}, createOptions(newToken));
-      setUser(response.response);
-      setToken(newToken);
-      localStorage.setItem('ruthless_token', newToken);
-    } catch (error: any) {
-      console.error('Login failed:', error);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const register = async (newToken: string, name?: string) => {
-    setLoading(true);
-    try {
-      const response = await userClient.register({ name: name || "" }, createOptions(newToken));
-      setUser(response.response);
-      setToken(newToken);
-      localStorage.setItem('ruthless_token', newToken);
-    } catch (error: any) {
-      console.error('Registration failed:', error);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const completeRegistration = async (name: string) => {
     if (!token) return;
@@ -99,14 +99,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const logout = () => {
+  const loginWithToken = (newToken: string) => {
+    setToken(newToken);
+    localStorage.setItem('ruthless_token', newToken);
+  };
+
+  const logout = async () => {
+    if (token) {
+      try {
+        const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+        await fetch(`${baseUrl}/auth/logout`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+      } catch (error) {
+        console.error('Logout failed:', error);
+      }
+    }
+    
     setToken(null);
     setUser(null);
     localStorage.removeItem('ruthless_token');
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, isDevelopment, login, register, completeRegistration, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, isDevelopment, limits, loginWithToken, completeRegistration, logout }}>
       {children}
     </AuthContext.Provider>
   );
