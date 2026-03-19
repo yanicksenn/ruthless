@@ -22,22 +22,24 @@ func (s *Server) ListCards(ctx context.Context, req *pb.ListCardsRequest) (*pb.L
 		fetchOwnerID = ""
 	}
 
-	if req.DeckId != "" {
-		deck, err := s.store.GetDeck(ctx, req.DeckId)
-		if err != nil {
-			if err == storage.ErrNotFound {
-				return nil, status.Errorf(codes.NotFound, "deck not found")
+	if len(req.IncludeDeckIds) > 0 {
+		for _, deckID := range req.IncludeDeckIds {
+			deck, err := s.store.GetDeck(ctx, deckID)
+			if err != nil {
+				if err == storage.ErrNotFound {
+					return nil, status.Errorf(codes.NotFound, "deck %s not found", deckID)
+				}
+				return nil, status.Errorf(codes.Internal, "failed to get deck %s", deckID)
 			}
-			return nil, status.Errorf(codes.Internal, "failed to get deck")
+			if !domain.CanViewDeck(deck, player.Id) {
+				return nil, status.Errorf(codes.PermissionDenied, "unauthorized to view cards in deck %s", deckID)
+			}
 		}
-		if !domain.CanViewDeck(deck, player.Id) {
-			return nil, status.Errorf(codes.PermissionDenied, "unauthorized to view cards in this deck")
-		}
-		// If authorized to view the deck, allow listing all cards in it
+		// If authorized to view the decks, allow listing all cards in them
 		fetchOwnerID = ""
 	}
 
-	cards, totalCount, err := s.store.ListCards(ctx, fetchOwnerID, req.PageSize, req.PageNumber, req.Ids, req.Filter, req.OrderBy, req.DeckId, req.Color)
+	cards, totalCount, err := s.store.ListCards(ctx, fetchOwnerID, req.PageSize, req.PageNumber, req.Ids, req.Filter, req.OrderBy, req.IncludeDeckIds, req.Color, req.ExcludeDeckIds)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to list cards")
 	}

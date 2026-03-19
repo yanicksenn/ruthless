@@ -120,8 +120,9 @@ message ListCardsRequest {
   repeated string ids = 3;
   string filter = 4;
   CardOrder order_by = 5;
-  string deck_id = 6;
+  repeated string include_deck_ids = 6;
   CardColor color = 7;
+  repeated string exclude_deck_ids = 8;
 }
 
 message ListCardsResponse {

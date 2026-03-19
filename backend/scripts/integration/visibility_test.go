@@ -133,7 +133,7 @@ func runVisibilityTests(t *testing.T, ctx context.Context, c *testutil.TestClien
 	testutil.AssertSuccess(t, err, "Charlie SubscribeToDeck")
 
 	t.Log("  [RUN] Charlie lists cards in Alice's deck...")
-	charlieCards, err := c.CardClient.ListCards(charlieCtx, &pb.ListCardsRequest{DeckId: aliceDeck.Id})
+	charlieCards, err := c.CardClient.ListCards(charlieCtx, &pb.ListCardsRequest{IncludeDeckIds: []string{aliceDeck.Id}})
 	testutil.AssertSuccess(t, err, "Charlie ListCards in Alice's deck")
 	
 	if charlieCards.TotalCount == 0 {
@@ -149,5 +149,15 @@ func runVisibilityTests(t *testing.T, ctx context.Context, c *testutil.TestClien
 	}
 	if !foundAliceCard {
 		t.Errorf("Charlie should see Alice's card %s in her deck", aliceCard.Id)
+	}
+
+	// 8. Alice lists cards and excludes her own deck - should not see the card
+	t.Log("  [RUN] Alice lists cards excluding her own deck...")
+	aliceCardsExcl, err := c.CardClient.ListCards(aliceCtx, &pb.ListCardsRequest{ExcludeDeckIds: []string{aliceDeck.Id}})
+	testutil.AssertSuccess(t, err, "Alice ListCards excluding own deck")
+	for _, card := range aliceCardsExcl.Cards {
+		if card.Id == aliceCard.Id {
+			t.Errorf("Alice should NOT see her card %s when excluded", card.Id)
+		}
 	}
 }

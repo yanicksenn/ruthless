@@ -173,7 +173,7 @@ func (s *Server) syncGameDecks(ctx context.Context, game *pb.Game, session *pb.S
 	game.HiddenBlackDeck = nil
 	game.HiddenWhiteDeck = nil
 
-	cards, _, err := s.store.ListCards(ctx, "", 0, 0, nil, "", nil, "", pb.CardColor_CARD_COLOR_UNSPECIFIED)
+	cards, _, err := s.store.ListCards(ctx, "", 0, 0, nil, "", nil, nil, pb.CardColor_CARD_COLOR_UNSPECIFIED, nil)
 	if err != nil {
 		return status.Errorf(codes.Internal, "failed to fetch cards")
 	}

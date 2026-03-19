@@ -184,7 +184,7 @@ func runCardTests(t *testing.T, ctx context.Context, c *testutil.TestClient, run
 
 		// Alice lists cards with deck filter
 		resp, err := c.CardClient.ListCards(aliceCtx, &pb.ListCardsRequest{
-			DeckId: deck.Id,
+			IncludeDeckIds: []string{deck.Id},
 		})
 		testutil.AssertSuccess(t, err, "ListCards with DeckId")
 
@@ -208,7 +208,7 @@ func runCardTests(t *testing.T, ctx context.Context, c *testutil.TestClient, run
 
 		// Test deck filter combined with text filter
 		resp, err = c.CardClient.ListCards(aliceCtx, &pb.ListCardsRequest{
-			DeckId: deck.Id,
+			IncludeDeckIds: []string{deck.Id},
 			Filter: "Beta",
 		})
 		testutil.AssertSuccess(t, err, "ListCards with DeckId and Filter 'Beta'")

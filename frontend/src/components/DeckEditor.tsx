@@ -26,6 +26,7 @@ export const DeckEditor: React.FC<DeckEditorProps> = ({ deckId, onBack, initialT
   const [availPage, setAvailPage] = useState(1);
   const [availTotal, setAvailTotal] = useState(0);
   const [availFilter, setAvailFilter] = useState('');
+  const [excludeInDeck, setExcludeInDeck] = useState(true);
 
   const pageSize = 12;
 
@@ -57,8 +58,9 @@ export const DeckEditor: React.FC<DeckEditorProps> = ({ deckId, onBack, initialT
         pageNumber: deckPage, 
         ids: [],
         filter: deckFilter,
-        deckId: deckId,
+        includeDeckIds: [deckId],
         color: CardColor.UNSPECIFIED,
+        excludeDeckIds: [],
       }, createOptions(token));
       setDeckCards(cardsRes.response.cards || []);
       setDeckTotal(cardsRes.response.totalCount);
@@ -77,8 +79,9 @@ export const DeckEditor: React.FC<DeckEditorProps> = ({ deckId, onBack, initialT
         pageNumber: availPage, 
         ids: [],
         filter: availFilter,
-        deckId: "",
+        includeDeckIds: [],
         color: CardColor.UNSPECIFIED,
+        excludeDeckIds: excludeInDeck ? [deckId] : [],
       }, createOptions(token));
       setAvailableCards(cardsRes.response.cards || []);
       setAvailTotal(cardsRes.response.totalCount);
@@ -105,7 +108,7 @@ export const DeckEditor: React.FC<DeckEditorProps> = ({ deckId, onBack, initialT
     if (isContributor) {
       fetchAvailableCards();
     }
-  }, [token, availPage, availFilter, isContributor]);
+  }, [token, availPage, availFilter, excludeInDeck, isContributor]);
 
   // Reset to first page when filters change
   useEffect(() => {
@@ -114,7 +117,7 @@ export const DeckEditor: React.FC<DeckEditorProps> = ({ deckId, onBack, initialT
 
   useEffect(() => {
     setAvailPage(1);
-  }, [availFilter]);
+  }, [availFilter, excludeInDeck]);
 
   const handleAddCard = async (cardId: string) => {
     try {
@@ -315,15 +318,29 @@ export const DeckEditor: React.FC<DeckEditorProps> = ({ deckId, onBack, initialT
                 <p className="text-gray-500 text-xs font-bold uppercase tracking-widest">Add to your deck</p>
               </div>
 
-              <div className="relative group/search text-white">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-hover/search:text-primary transition-colors" size={16} />
-                <input
-                  type="text"
-                  placeholder="Filter available cards..."
-                  value={availFilter}
-                  onChange={(e) => setAvailFilter(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl py-2 pl-12 pr-4 text-sm font-medium placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all"
-                />
+              <div className="flex items-center justify-between gap-4">
+                <div className="relative group/search text-white flex-1">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-hover/search:text-primary transition-colors" size={16} />
+                  <input
+                    type="text"
+                    placeholder="Filter available cards..."
+                    value={availFilter}
+                    onChange={(e) => setAvailFilter(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl py-2 pl-12 pr-4 text-sm font-medium placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all"
+                  />
+                </div>
+                
+                <button
+                  onClick={() => setExcludeInDeck(!excludeInDeck)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all whitespace-nowrap text-xs font-black uppercase tracking-widest ${
+                    excludeInDeck 
+                      ? 'bg-primary/20 border-primary/30 text-primary' 
+                      : 'bg-white/5 border-white/10 text-gray-500 hover:text-white'
+                  }`}
+                >
+                  <div className={`w-3 h-3 rounded-full border-2 transition-all ${excludeInDeck ? 'bg-primary border-primary' : 'border-gray-600'}`} />
+                  Exclude in deck
+                </button>
               </div>
             </div>
 

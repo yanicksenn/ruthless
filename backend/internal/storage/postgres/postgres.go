@@ -139,18 +139,30 @@ func (s *Storage) GetCard(ctx context.Context, id string) (*pb.Card, error) {
 	return &c, nil
 }
 
-func (s *Storage) ListCards(ctx context.Context, ownerID string, pageSize, pageNumber int32, ids []string, filter string, orderBy *pb.CardOrder, deckID string, color pb.CardColor) ([]*pb.Card, int32, error) {
+func (s *Storage) ListCards(ctx context.Context, ownerID string, pageSize, pageNumber int32, ids []string, filter string, orderBy *pb.CardOrder, includeDeckIDs []string, color pb.CardColor, excludeDeckIDs []string) ([]*pb.Card, int32, error) {
 	var totalCount int32
 	var whereClauses []string
 	var args []interface{}
 	argId := 1
 
-	joinClause := ""
-	if deckID != "" {
-		joinClause = " JOIN deck_cards dc ON cards.id = dc.card_id"
-		whereClauses = append(whereClauses, "dc.deck_id = $"+strconv.Itoa(argId))
-		args = append(args, deckID)
-		argId++
+	if len(includeDeckIDs) > 0 {
+		placeholders := make([]string, len(includeDeckIDs))
+		for i, id := range includeDeckIDs {
+			placeholders[i] = "$" + strconv.Itoa(argId)
+			args = append(args, id)
+			argId++
+		}
+		whereClauses = append(whereClauses, "EXISTS (SELECT 1 FROM deck_cards dc WHERE dc.card_id = cards.id AND dc.deck_id IN ("+strings.Join(placeholders, ", ")+"))")
+	}
+
+	if len(excludeDeckIDs) > 0 {
+		placeholders := make([]string, len(excludeDeckIDs))
+		for i, id := range excludeDeckIDs {
+			placeholders[i] = "$" + strconv.Itoa(argId)
+			args = append(args, id)
+			argId++
+		}
+		whereClauses = append(whereClauses, "NOT EXISTS (SELECT 1 FROM deck_cards dc WHERE dc.card_id = cards.id AND dc.deck_id IN ("+strings.Join(placeholders, ", ")+"))")
 	}
 
 	if ownerID != "" {
@@ -186,8 +198,8 @@ func (s *Storage) ListCards(ctx context.Context, ownerID string, pageSize, pageN
 		whereClause = " WHERE " + strings.Join(whereClauses, " AND ")
 	}
 
-	countQuery := "SELECT COUNT(*) FROM cards" + joinClause + whereClause
-	dataQuery := "SELECT cards.id, cards.text, cards.color, cards.owner_id, cards.created_at, cards.updated_at FROM cards" + joinClause + whereClause
+	countQuery := "SELECT COUNT(*) FROM cards" + whereClause
+	dataQuery := "SELECT cards.id, cards.text, cards.color, cards.owner_id, cards.created_at, cards.updated_at FROM cards" + whereClause
 
 	err := s.db.QueryRowContext(ctx, countQuery, args...).Scan(&totalCount)
 	if err != nil {

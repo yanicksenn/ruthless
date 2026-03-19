@@ -36,7 +36,8 @@ export const Cards: React.FC = () => {
             descending
           },
           color: colorFilter,
-          deckId: ""
+          includeDeckIds: [],
+          excludeDeckIds: []
         }, createOptions(token)),
         deckClient.listDecks({}, createOptions(token))
       ]);

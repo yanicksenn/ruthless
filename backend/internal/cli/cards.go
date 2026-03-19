@@ -132,9 +132,12 @@ var cardsListCmd = &cobra.Command{
 			ctx = metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+token)
 		}
 
-		resp, err := client.ListCards(ctx, &pb.ListCardsRequest{
-			DeckId: deckID,
-		})
+		req := &pb.ListCardsRequest{}
+		if deckID != "" {
+			req.IncludeDeckIds = []string{deckID}
+		}
+
+		resp, err := client.ListCards(ctx, req)
 		if err != nil {
 			log.Fatalf("Failed to list cards: %v", err)
 		}

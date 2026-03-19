@@ -135,19 +135,33 @@ func (s *Storage) GetCard(ctx context.Context, id string) (*pb.Card, error) {
 	return card, nil
 }
 
-func (s *Storage) ListCards(ctx context.Context, ownerID string, pageSize, pageNumber int32, ids []string, filter string, orderBy *pb.CardOrder, deckID string, color pb.CardColor) ([]*pb.Card, int32, error) {
+func (s *Storage) ListCards(ctx context.Context, ownerID string, pageSize, pageNumber int32, ids []string, filter string, orderBy *pb.CardOrder, includeDeckIDs []string, color pb.CardColor, excludeDeckIDs []string) ([]*pb.Card, int32, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	var deckCardIds map[string]bool
-	if deckID != "" {
-		deck, ok := s.decks[deckID]
-		if !ok {
-			return nil, 0, storage.ErrNotFound
+	includeCardIds := make(map[string]bool)
+	if len(includeDeckIDs) > 0 {
+		for _, dID := range includeDeckIDs {
+			deck, ok := s.decks[dID]
+			if !ok {
+				return nil, 0, storage.ErrNotFound
+			}
+			for _, id := range deck.CardIds {
+				includeCardIds[id] = true
+			}
 		}
-		deckCardIds = make(map[string]bool)
-		for _, id := range deck.CardIds {
-			deckCardIds[id] = true
+	}
+
+	excludeCardIds := make(map[string]bool)
+	if len(excludeDeckIDs) > 0 {
+		for _, dID := range excludeDeckIDs {
+			deck, ok := s.decks[dID]
+			if !ok {
+				continue // Or return error? Postgres implementation wouldn't error if deck doesn't exist, it just wouldn't exclude anything.
+			}
+			for _, id := range deck.CardIds {
+				excludeCardIds[id] = true
+			}
 		}
 	}
 
@@ -158,8 +172,12 @@ func (s *Storage) ListCards(ctx context.Context, ownerID string, pageSize, pageN
 	}
 
 	for _, c := range s.cards {
-		// Filter by Deck if provided
-		if deckID != "" && !deckCardIds[c.Id] {
+		// Filter by inclusion decks if provided
+		if len(includeDeckIDs) > 0 && !includeCardIds[c.Id] {
+			continue
+		}
+		// Filter by exclusion decks if provided
+		if len(excludeDeckIDs) > 0 && excludeCardIds[c.Id] {
 			continue
 		}
 		// Filter by ID list if provided
