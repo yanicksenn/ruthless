@@ -1,0 +1,2 @@
+build --define VITE_API_BASE_URL=""
+build --define VITE_GOOGLE_CLIENT_ID=""

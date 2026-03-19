@@ -2,18 +2,28 @@ package server
 
 import (
 	"context"
+	"strings"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	pb "github.com/yanicksenn/ruthless/api/v1"
 	"github.com/yanicksenn/ruthless/backend/internal/domain"
+	"github.com/yanicksenn/ruthless/backend/internal/storage"
 )
 
 func (s *Server) ListDecks(ctx context.Context, req *pb.ListDecksRequest) (*pb.ListDecksResponse, error) {
-	decks, err := s.store.ListDecks(ctx)
+	player, ok := getPlayer(ctx)
+	if !ok {
+		return nil, status.Errorf(codes.Unauthenticated, "unauthorized")
+	}
+	decks, err := s.store.ListDecks(ctx, player.Id)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to list decks")
+	}
+
+	for _, deck := range decks {
+		s.populatePlayers(ctx, deck)
 	}
 
 	return &pb.ListDecksResponse{Decks: decks}, nil
@@ -25,7 +35,32 @@ func (s *Server) GetDeck(ctx context.Context, req *pb.GetDeckRequest) (*pb.Deck,
 		return nil, status.Errorf(codes.NotFound, "deck not found")
 	}
 
+	s.populatePlayers(ctx, deck)
 	return deck, nil
+}
+
+func (s *Server) populatePlayers(ctx context.Context, deck *pb.Deck) {
+	// Populate owner
+	owner, err := s.store.GetUser(ctx, deck.OwnerId)
+	if err == nil {
+		deck.OwnerPlayer = &pb.Player{
+			Id:         owner.Id,
+			Name:       owner.Name,
+			Identifier: owner.Identifier,
+		}
+	}
+
+	// Populate contributors
+	for _, cID := range deck.Contributors {
+		user, err := s.store.GetUser(ctx, cID)
+		if err == nil {
+			deck.ContributorPlayers = append(deck.ContributorPlayers, &pb.Player{
+				Id:         user.Id,
+				Name:       user.Name,
+				Identifier: user.Identifier,
+			})
+		}
+	}
 }
 
 func (s *Server) CreateDeck(ctx context.Context, req *pb.CreateDeckRequest) (*pb.Deck, error) {
@@ -57,6 +92,7 @@ func (s *Server) CreateDeck(ctx context.Context, req *pb.CreateDeckRequest) (*pb
 		return nil, status.Errorf(codes.Internal, "failed to create deck")
 	}
 
+	s.populatePlayers(ctx, deck)
 	return deck, nil
 }
 
@@ -77,7 +113,17 @@ func (s *Server) AddContributor(ctx context.Context, req *pb.AddContributorReque
 		}
 	}
 
-	if err := domain.AddContributorToDeck(deck, player.Id, req.ContributorId); err != nil {
+	identifier := strings.TrimSpace(req.Identifier)
+	if parts := strings.Split(identifier, "#"); len(parts) > 1 {
+		identifier = parts[len(parts)-1]
+	}
+
+	user, err := s.store.GetUserByIdentifier(ctx, identifier)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "user not found")
+	}
+
+	if err := domain.AddContributorToDeck(deck, player.Id, user.Id); err != nil {
 		return nil, status.Errorf(codes.PermissionDenied, err.Error())
 	}
 
@@ -99,7 +145,17 @@ func (s *Server) RemoveContributor(ctx context.Context, req *pb.RemoveContributo
 		return nil, status.Errorf(codes.NotFound, "deck not found")
 	}
 
-	if err := domain.RemoveContributorFromDeck(deck, player.Id, req.ContributorId); err != nil {
+	identifier := strings.TrimSpace(req.Identifier)
+	if parts := strings.Split(identifier, "#"); len(parts) > 1 {
+		identifier = parts[len(parts)-1]
+	}
+
+	user, err := s.store.GetUserByIdentifier(ctx, identifier)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "user not found")
+	}
+
+	if err := domain.RemoveContributorFromDeck(deck, player.Id, user.Id); err != nil {
 		return nil, status.Errorf(codes.PermissionDenied, err.Error())
 	}
 
@@ -164,4 +220,42 @@ func (s *Server) RemoveCardFromDeck(ctx context.Context, req *pb.RemoveCardFromD
 	}
 
 	return &pb.RemoveCardFromDeckResponse{}, nil
+}
+
+func (s *Server) SubscribeToDeck(ctx context.Context, req *pb.SubscribeToDeckRequest) (*pb.SubscribeToDeckResponse, error) {
+	player, ok := getPlayer(ctx)
+	if !ok {
+		return nil, status.Errorf(codes.Unauthenticated, "unauthorized")
+	}
+
+	deck, err := s.store.GetDeck(ctx, req.DeckId)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "deck not found")
+	}
+
+	if deck.OwnerId == player.Id {
+		return nil, status.Errorf(codes.InvalidArgument, "cannot subscribe to your own deck")
+	}
+
+	if err := s.store.SubscribeToDeck(ctx, req.DeckId, player.Id); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to subscribe to deck")
+	}
+
+	return &pb.SubscribeToDeckResponse{}, nil
+}
+
+func (s *Server) UnsubscribeFromDeck(ctx context.Context, req *pb.UnsubscribeFromDeckRequest) (*pb.UnsubscribeFromDeckResponse, error) {
+	player, ok := getPlayer(ctx)
+	if !ok {
+		return nil, status.Errorf(codes.Unauthenticated, "unauthorized")
+	}
+
+	if err := s.store.UnsubscribeFromDeck(ctx, req.DeckId, player.Id); err != nil {
+		if err == storage.ErrNotFound {
+			return nil, status.Errorf(codes.NotFound, "subscription not found")
+		}
+		return nil, status.Errorf(codes.Internal, "failed to unsubscribe from deck")
+	}
+
+	return &pb.UnsubscribeFromDeckResponse{}, nil
 }

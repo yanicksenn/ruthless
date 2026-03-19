@@ -169,17 +169,28 @@ func (s *Server) LeaveSession(ctx context.Context, req *pb.LeaveSessionRequest) 
 		return nil, status.Errorf(codes.Unauthenticated, "unauthorized")
 	}
 
-	domain.RemovePlayerFromSession(session, player.Id)
-
-	if err := s.store.UpdateSession(ctx, session); err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to update session")
-	}
-
 	game, err := s.store.GetGameBySession(ctx, session.Id)
 	if err == nil {
-		domain.HandlePlayerLeave(game, player.Id)
+		// If the owner leaves and the game is still WAITING, abandon it immediately.
+		if session.OwnerId == player.Id && game.State == pb.GameState_GAME_STATE_WAITING {
+			game.State = pb.GameState_GAME_STATE_ABANDONED
+			session.PlayerIds = []string{} // Clear participants
+		} else {
+			domain.RemovePlayerFromSession(session, player.Id)
+			domain.HandlePlayerLeave(game, player.Id)
+		}
+
+		if err := s.store.UpdateSession(ctx, session); err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to update session")
+		}
 		if err := s.store.UpdateGame(ctx, game); err != nil {
 			return nil, status.Errorf(codes.Internal, "failed to update game state: %v", err)
+		}
+	} else {
+		// No game found (unlikely in new model), just remove from session
+		domain.RemovePlayerFromSession(session, player.Id)
+		if err := s.store.UpdateSession(ctx, session); err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to update session")
 		}
 	}
 

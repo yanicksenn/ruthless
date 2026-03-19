@@ -173,7 +173,7 @@ func (s *Server) syncGameDecks(ctx context.Context, game *pb.Game, session *pb.S
 	game.HiddenBlackDeck = nil
 	game.HiddenWhiteDeck = nil
 
-	cards, _, err := s.store.ListCards(ctx, 0, 0, nil, "", nil)
+	cards, _, err := s.store.ListCards(ctx, "", 0, 0, nil, "", nil, "", pb.CardColor_CARD_COLOR_UNSPECIFIED)
 	if err != nil {
 		return status.Errorf(codes.Internal, "failed to fetch cards")
 	}
@@ -182,7 +182,7 @@ func (s *Server) syncGameDecks(ctx context.Context, game *pb.Game, session *pb.S
 		cardMap[c.Id] = c
 	}
 
-	decks, err := s.store.ListDecks(ctx)
+	decks, err := s.store.ListDecks(ctx, "")
 	if err != nil {
 		return status.Errorf(codes.Internal, "failed to fetch decks")
 	}
@@ -205,8 +205,9 @@ func (s *Server) syncGamePlayers(ctx context.Context, game *pb.Game, session *pb
 			return status.Errorf(codes.Internal, "failed to fetch player %s: %v", pid, err)
 		}
 		game.Players = append(game.Players, &pb.Player{
-			Id:   user.Id,
-			Name: user.Name,
+			Id:         user.Id,
+			Name:       user.Name,
+			Identifier: user.Identifier,
 		})
 	}
 	return nil

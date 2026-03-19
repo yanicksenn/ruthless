@@ -134,9 +134,11 @@ func TestServer_CreateCard_Limit(t *testing.T) {
 	alice := domain.NewPlayer("Alice")
 	auth := &mockAuth{player: alice}
 	cfg := &pb.Config{
-		Limits: &pb.Config_Limits{
-			MaxCardTextLength: 10,
-			MaxCardsPerUser:   2,
+		Public: &pb.ConfigPublic{
+			Limits: &pb.ConfigPublic_Limits{
+				MaxCardTextLength: 10,
+				MaxCardsPerUser:   2,
+			},
 		},
 	}
 	srv := server.New(store, auth, cfg)
@@ -167,9 +169,11 @@ func TestServer_CreateDeck_Limit(t *testing.T) {
 	alice := domain.NewPlayer("Alice")
 	auth := &mockAuth{player: alice}
 	cfg := &pb.Config{
-		Limits: &pb.Config_Limits{
-			MaxDeckNameLength: 10,
-			MaxDecksPerUser:   1,
+		Public: &pb.ConfigPublic{
+			Limits: &pb.ConfigPublic_Limits{
+				MaxDeckNameLength: 10,
+				MaxDecksPerUser:   1,
+			},
 		},
 	}
 	srv := server.New(store, auth, cfg)
@@ -189,7 +193,9 @@ func TestServer_CreateDeck_Limit(t *testing.T) {
 	// Reset store and use a new server with higher deck count limit but same name limit
 	store2 := memory.New()
 	srv2 := server.New(store2, auth, &pb.Config{
-		Limits: &pb.Config_Limits{MaxDeckNameLength: 5, MaxDecksPerUser: 10},
+		Public: &pb.ConfigPublic{
+			Limits: &pb.ConfigPublic_Limits{MaxDeckNameLength: 5, MaxDecksPerUser: 10},
+		},
 	})
 	_, err = srv2.CreateDeck(ctx, &pb.CreateDeckRequest{Name: "Too Long"})
 	assert.Error(t, err)
@@ -201,9 +207,11 @@ func TestServer_CompleteRegistration_Limit(t *testing.T) {
 	alice := &pb.Player{Id: "alice-1", Name: "Alice"}
 	auth := &mockAuth{player: alice}
 	cfg := &pb.Config{
-		Limits: &pb.Config_Limits{
-			MinUserNameLength: 3,
-			MaxUserNameLength: 8,
+		Public: &pb.ConfigPublic{
+			Limits: &pb.ConfigPublic_Limits{
+				MinUserNameLength: 3,
+				MaxUserNameLength: 8,
+			},
 		},
 	}
 	srv := server.New(store, auth, cfg)
@@ -234,10 +242,12 @@ func TestServer_CreateSession_Limit(t *testing.T) {
 	alice := &pb.Player{Id: "alice-1", Name: "Alice"}
 	auth := &mockAuth{player: alice}
 	cfg := &pb.Config{
-		Limits: &pb.Config_Limits{
-			MaxSessionNameLength: 10,
-			MaxSessionsPerUser:   1,
-			MaxCardsPerSession:   10,
+		Public: &pb.ConfigPublic{
+			Limits: &pb.ConfigPublic_Limits{
+				MaxSessionNameLength: 10,
+				MaxSessionsPerUser:   1,
+				MaxCardsPerSession:   10,
+			},
 		},
 	}
 	srv := server.New(store, auth, cfg)
@@ -265,7 +275,9 @@ func TestServer_CreateSession_Limit(t *testing.T) {
 	require.NoError(t, store2.CreateDeck(ctx, &pb.Deck{Id: "large-deck", Name: "Large", OwnerId: alice.Id, CardIds: make([]string, 11)}))
 	
 	srv2 := server.New(store2, auth, &pb.Config{
-		Limits: &pb.Config_Limits{MaxSessionsPerUser: 10, MaxCardsPerSession: 10},
+		Public: &pb.ConfigPublic{
+			Limits: &pb.ConfigPublic_Limits{MaxSessionsPerUser: 10, MaxCardsPerSession: 10},
+		},
 	})
 	_, err = srv2.CreateSession(ctx, &pb.CreateSessionRequest{Name: "Too Big", DeckIds: []string{"large-deck"}})
 	assert.Error(t, err)

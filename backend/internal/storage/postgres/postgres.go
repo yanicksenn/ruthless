@@ -109,7 +109,7 @@ func (s *Storage) Init() error {
 
 // Card operations
 func (s *Storage) CreateCard(ctx context.Context, card *pb.Card) error {
-	_, err := s.db.ExecContext(ctx, "INSERT INTO cards (id, text, color, owner_id) VALUES ($1, $2, $3, $4)", card.Id, card.Text, int32(card.Color), card.OwnerId)
+	_, err := s.db.ExecContext(ctx, "INSERT INTO cards (id, text, owner_id) VALUES ($1, $2, $3)", card.Id, card.Text, card.OwnerId)
 	return err
 }
 
@@ -139,11 +139,25 @@ func (s *Storage) GetCard(ctx context.Context, id string) (*pb.Card, error) {
 	return &c, nil
 }
 
-func (s *Storage) ListCards(ctx context.Context, pageSize, pageNumber int32, ids []string, filter string, orderBy *pb.CardOrder) ([]*pb.Card, int32, error) {
+func (s *Storage) ListCards(ctx context.Context, ownerID string, pageSize, pageNumber int32, ids []string, filter string, orderBy *pb.CardOrder, deckID string, color pb.CardColor) ([]*pb.Card, int32, error) {
 	var totalCount int32
 	var whereClauses []string
 	var args []interface{}
 	argId := 1
+
+	joinClause := ""
+	if deckID != "" {
+		joinClause = " JOIN deck_cards dc ON cards.id = dc.card_id"
+		whereClauses = append(whereClauses, "dc.deck_id = $"+strconv.Itoa(argId))
+		args = append(args, deckID)
+		argId++
+	}
+
+	if ownerID != "" {
+		whereClauses = append(whereClauses, "owner_id = $"+strconv.Itoa(argId))
+		args = append(args, ownerID)
+		argId++
+	}
 
 	if len(ids) > 0 {
 		placeholders := make([]string, len(ids))
@@ -152,7 +166,7 @@ func (s *Storage) ListCards(ctx context.Context, pageSize, pageNumber int32, ids
 			args = append(args, id)
 			argId++
 		}
-		whereClauses = append(whereClauses, "id IN ("+strings.Join(placeholders, ", ")+")")
+		whereClauses = append(whereClauses, "cards.id IN ("+strings.Join(placeholders, ", ")+")")
 	}
 
 	if filter != "" {
@@ -161,33 +175,39 @@ func (s *Storage) ListCards(ctx context.Context, pageSize, pageNumber int32, ids
 		argId++
 	}
 
+	if color != pb.CardColor_CARD_COLOR_UNSPECIFIED {
+		whereClauses = append(whereClauses, "cards.color = $"+strconv.Itoa(argId))
+		args = append(args, int32(color))
+		argId++
+	}
+
 	whereClause := ""
 	if len(whereClauses) > 0 {
 		whereClause = " WHERE " + strings.Join(whereClauses, " AND ")
 	}
 
-	countQuery := "SELECT COUNT(*) FROM cards" + whereClause
-	dataQuery := "SELECT id, text, color, owner_id, created_at, updated_at FROM cards" + whereClause
+	countQuery := "SELECT COUNT(*) FROM cards" + joinClause + whereClause
+	dataQuery := "SELECT cards.id, cards.text, cards.color, cards.owner_id, cards.created_at, cards.updated_at FROM cards" + joinClause + whereClause
 
 	err := s.db.QueryRowContext(ctx, countQuery, args...).Scan(&totalCount)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	orderClause := " ORDER BY id"
+	orderClause := " ORDER BY cards.id"
 	if orderBy != nil {
-		column := "id"
+		column := "cards.id"
 		switch orderBy.Field {
 		case pb.CardOrderField_CARD_ORDER_FIELD_TEXT:
-			column = "text"
+			column = "cards.text"
 		case pb.CardOrderField_CARD_ORDER_FIELD_CREATED_AT:
-			column = "created_at"
+			column = "cards.created_at"
 		}
 		dir := "ASC"
 		if orderBy.Descending {
 			dir = "DESC"
 		}
-		orderClause = fmt.Sprintf(" ORDER BY %s %s, id ASC", column, dir)
+		orderClause = fmt.Sprintf(" ORDER BY %s %s, cards.id ASC", column, dir)
 	}
 	dataQuery += orderClause
 
@@ -232,6 +252,21 @@ func (s *Storage) DeleteCard(ctx context.Context, id string) error {
 	return err
 }
 
+func (s *Storage) UpdateCard(ctx context.Context, card *pb.Card) error {
+	res, err := s.db.ExecContext(ctx, "UPDATE cards SET text = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2", card.Text, card.Id)
+	if err != nil {
+		return err
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return storage.ErrNotFound
+	}
+	return nil
+}
+
 // User operations
 func (s *Storage) CreateUser(ctx context.Context, user *pb.User) error {
 	var identifier sql.NullString
@@ -272,6 +307,29 @@ func (s *Storage) UpdateUser(ctx context.Context, user *pb.User) error {
 
 func (s *Storage) GetUser(ctx context.Context, id string) (*pb.User, error) {
 	row := s.db.QueryRowContext(ctx, "SELECT id, name, identifier, created_at FROM users WHERE id = $1", id)
+	var u pb.User
+	var identifier sql.NullString
+	var createdAt sql.NullTime
+	if err := row.Scan(&u.Id, &u.Name, &identifier, &createdAt); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, storage.ErrNotFound
+		}
+		return nil, err
+	}
+	if identifier.Valid {
+		u.Identifier = identifier.String
+		u.PendingCompletion = false
+	} else {
+		u.PendingCompletion = true
+	}
+	if createdAt.Valid {
+		u.CreatedAt = timestamppb.New(createdAt.Time)
+	}
+	return &u, nil
+}
+
+func (s *Storage) GetUserByIdentifier(ctx context.Context, identifierStr string) (*pb.User, error) {
+	row := s.db.QueryRowContext(ctx, "SELECT id, name, identifier, created_at FROM users WHERE identifier = $1", identifierStr)
 	var u pb.User
 	var identifier sql.NullString
 	var createdAt sql.NullTime
@@ -435,14 +493,14 @@ func (s *Storage) UpdateSession(ctx context.Context, session *pb.Session) error 
 
 func (s *Storage) ListSessions(ctx context.Context, playerID string) ([]*pb.Session, error) {
 	// Filter for sessions that:
-	// 1. Are WAITING (state = 2)
-	// 2. OR Are PLAYING/JUDGING (state = 3, 4) AND the player is already a participant
+	// 1. Are WAITING (state = 1)
+	// 2. OR Are PLAYING/JUDGING (state = 2, 3) AND the player is already a participant
 	query := `
 		SELECT s.id, s.owner_id, s.name, s.created_at
 		FROM sessions s
 		JOIN games g ON s.id = g.session_id
-		WHERE g.state = 2
-		   OR (g.state IN (3, 4) AND EXISTS (
+		WHERE g.state = 1
+		   OR (g.state IN (2, 3) AND EXISTS (
 			   SELECT 1 FROM session_players sp 
 			   WHERE sp.session_id = s.id AND sp.player_id = $1
 		   ))
@@ -578,6 +636,20 @@ func (s *Storage) GetDeck(ctx context.Context, id string) (*pb.Deck, error) {
 		d.CardIds = append(d.CardIds, cardID)
 	}
 
+	// Fetch subscribers
+	rows, err = s.db.QueryContext(ctx, "SELECT user_id FROM deck_subscriptions WHERE deck_id = $1", id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var userID string
+		if err := rows.Scan(&userID); err != nil {
+			return nil, err
+		}
+		d.Subscribers = append(d.Subscribers, userID)
+	}
+
 	return &d, nil
 }
 
@@ -624,8 +696,21 @@ func (s *Storage) UpdateDeck(ctx context.Context, deck *pb.Deck) error {
 	return tx.Commit()
 }
 
-func (s *Storage) ListDecks(ctx context.Context) ([]*pb.Deck, error) {
-	rows, err := s.db.QueryContext(ctx, "SELECT id, name, owner_id, created_at, updated_at FROM decks")
+func (s *Storage) ListDecks(ctx context.Context, ownerID string) ([]*pb.Deck, error) {
+	var rows *sql.Rows
+	var err error
+	if ownerID == "" {
+		rows, err = s.db.QueryContext(ctx, "SELECT id, name, owner_id, created_at, updated_at FROM decks")
+	} else {
+		query := `
+			SELECT id, name, owner_id, created_at, updated_at 
+			FROM decks 
+			WHERE owner_id = $1 
+			   OR EXISTS (SELECT 1 FROM deck_contributors dc WHERE dc.deck_id = decks.id AND dc.user_id = $1)
+			   OR EXISTS (SELECT 1 FROM deck_subscriptions ds WHERE ds.deck_id = decks.id AND ds.user_id = $1)
+		`
+		rows, err = s.db.QueryContext(ctx, query, ownerID)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -679,9 +764,41 @@ func (s *Storage) ListDecks(ctx context.Context) ([]*pb.Deck, error) {
 			d.CardIds = append(d.CardIds, cardID)
 		}
 		cardRows.Close()
+
+		// Subscribers
+		subRows, err := s.db.QueryContext(ctx, "SELECT user_id FROM deck_subscriptions WHERE deck_id = $1", d.Id)
+		if err != nil {
+			return nil, err
+		}
+		for subRows.Next() {
+			var userID string
+			if err := subRows.Scan(&userID); err != nil {
+				subRows.Close()
+				return nil, err
+			}
+			d.Subscribers = append(d.Subscribers, userID)
+		}
+		subRows.Close()
 	}
 
 	return decks, nil
+}
+
+func (s *Storage) SubscribeToDeck(ctx context.Context, deckID, userID string) error {
+	_, err := s.db.ExecContext(ctx, "INSERT INTO deck_subscriptions (deck_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING", deckID, userID)
+	return err
+}
+
+func (s *Storage) UnsubscribeFromDeck(ctx context.Context, deckID, userID string) error {
+	res, err := s.db.ExecContext(ctx, "DELETE FROM deck_subscriptions WHERE deck_id = $1 AND user_id = $2", deckID, userID)
+	if err != nil {
+		return err
+	}
+	rows, _ := res.RowsAffected()
+	if rows == 0 {
+		return storage.ErrNotFound
+	}
+	return nil
 }
 
 // Game operations

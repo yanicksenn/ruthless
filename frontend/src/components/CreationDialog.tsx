@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { X, PlusCircle } from 'lucide-react';
+import { X, PlusCircle, Check } from 'lucide-react';
 
 interface CreationDialogProps {
   isOpen: boolean;
@@ -11,6 +11,7 @@ interface CreationDialogProps {
   submitLabel: string;
   maxLength?: number;
   minLength?: number;
+  initialValue?: string;
 }
 
 export const CreationDialog: React.FC<CreationDialogProps> = ({
@@ -22,10 +23,16 @@ export const CreationDialog: React.FC<CreationDialogProps> = ({
   label,
   submitLabel,
   maxLength,
-  minLength = 1
+  minLength = 1,
+  initialValue = ''
 }) => {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const [value, setValue] = useState('');
+  const [value, setValue] = useState(initialValue);
+
+  // Update internal value when initialValue changes (when opening for edit)
+  useEffect(() => {
+    setValue(initialValue);
+  }, [initialValue, isOpen]);
 
   const isInvalid = (maxLength && value.length > maxLength) || (value.trim().length < minLength && value.length > 0);
 
@@ -116,7 +123,7 @@ export const CreationDialog: React.FC<CreationDialogProps> = ({
               disabled={!value.trim() || isInvalid}
               className="flex-1 bg-primary hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed text-black font-black px-6 py-4 rounded-2xl flex items-center justify-center gap-2 transition-all transform hover:scale-[1.02] shadow-lg shadow-primary/20 uppercase tracking-widest text-sm"
             >
-              <PlusCircle size={18} />
+              {initialValue ? <Check size={18} /> : <PlusCircle size={18} />}
               {submitLabel}
             </button>
           </div>

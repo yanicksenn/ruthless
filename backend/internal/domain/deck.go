@@ -34,6 +34,18 @@ func CanModifyDeck(d *pb.Deck, userID string) bool {
 	return false
 }
 
+func CanViewDeck(d *pb.Deck, userID string) bool {
+	if CanModifyDeck(d, userID) {
+		return true
+	}
+	for _, subscriberID := range d.Subscribers {
+		if subscriberID == userID {
+			return true
+		}
+	}
+	return false
+}
+
 func AddContributorToDeck(d *pb.Deck, ownerID, contributorID string) error {
 	if d.OwnerId != ownerID {
 		return ErrUnauthorized

@@ -3,11 +3,14 @@ load("@rules_go//go:def.bzl", "go_test")
 go_test(
     name = "integration_test",
     srcs = [
+        "abandonment_test.go",
         "auth_test.go",
         "card_test.go",
         "deck_test.go",
         "game_test.go",
         "main_test.go",
+        "session_list_test.go",
+        "visibility_test.go",
     ],
     importpath = "github.com/yanicksenn/ruthless/backend/scripts/integration",
     deps = [

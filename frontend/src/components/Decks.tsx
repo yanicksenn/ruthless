@@ -1,17 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Plus, Library as LibraryIcon, ChevronRight, Hash, LogOut } from 'lucide-react';
+import { Plus, Library as LibraryIcon, ChevronRight, Hash, LogOut, Share2, Unlink } from 'lucide-react';
 import { deckClient, createOptions } from '../api/client';
 import { Deck } from '../api/ruthless';
 import { CreationDialog } from './CreationDialog';
 import { DeckEditor } from './DeckEditor';
 
-export const Decks: React.FC = () => {
+export interface DecksProps {
+  activeDeckId?: string | null;
+  activeTab?: string | null;
+  onSelectDeck?: (id: string | null) => void;
+}
+
+export const Decks: React.FC<DecksProps> = ({ activeDeckId, activeTab, onSelectDeck }) => {
   const { token, user, logout, limits } = useAuth();
   const [decks, setDecks] = useState<Deck[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedDeckId, setSelectedDeckId] = useState<string | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -42,8 +47,8 @@ export const Decks: React.FC = () => {
     }
   };
 
-  if (selectedDeckId) {
-    return <DeckEditor deckId={selectedDeckId} onBack={() => setSelectedDeckId(null)} />;
+  if (activeDeckId) {
+    return <DeckEditor deckId={activeDeckId} initialTab={activeTab || 'cards'} onBack={() => onSelectDeck?.(null)} />;
   }
 
   return (
@@ -59,7 +64,10 @@ export const Decks: React.FC = () => {
               <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs font-bold ring-1 ring-primary/30">
                 {user.name.slice(0, 2).toUpperCase()}
               </div>
-              <span className="text-gray-300 font-bold text-sm tracking-tight">{user.name}</span>
+              <span className="text-gray-300 font-bold text-sm tracking-tight">
+                {user.name}
+                {user.identifier && <span className="text-gray-500 italic">#{user.identifier}</span>}
+              </span>
             </div>
           )}
         </div>
@@ -104,7 +112,7 @@ export const Decks: React.FC = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {decks.map(deck => (
-                <div key={deck.id} onClick={() => setSelectedDeckId(deck.id)} className="group relative glass-light p-6 rounded-3xl border border-white/10 hover:border-primary/30 transition-all cursor-pointer">
+                <div key={deck.id} onClick={() => onSelectDeck?.(deck.id)} className="group relative glass-light p-6 rounded-3xl border border-white/10 hover:border-primary/30 transition-all cursor-pointer">
                   <div className="flex justify-between items-start mb-4">
                     <div className="p-2 bg-primary/10 rounded-xl">
                       <Hash size={16} className="text-primary" />
@@ -114,7 +122,43 @@ export const Decks: React.FC = () => {
                     </div>
                   </div>
                   <h3 className="text-xl font-bold text-white mb-6 group-hover:text-primary transition-colors">{deck.name}</h3>
-                  <div className="flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                     <div className="flex items-center gap-2">
+                     {deck.ownerId === user?.id && (
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigator.clipboard.writeText(`${window.location.origin}/decks/${deck.id}/subscribe`);
+                            alert('Sharable link copied to clipboard!');
+                          }} 
+                          className="text-gray-400 hover:text-primary p-2 transition-colors rounded-full hover:bg-white/5"
+                          title="Share Deck link"
+                        >
+                          <Share2 size={16} />
+                        </button>
+                     )}
+                     {(deck.subscribers || []).includes(user?.id || '') && (
+                        <button 
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            if (window.confirm('Unsubscribe from this deck?')) {
+                              try {
+                                setLoading(true);
+                                await deckClient.unsubscribeFromDeck({ deckId: deck.id }, createOptions(token));
+                                fetchData();
+                              } catch (err) {
+                                alert('Failed to unsubscribe');
+                                setLoading(false);
+                              }
+                            }
+                          }} 
+                          className="text-gray-400 hover:text-red-500 p-2 transition-colors rounded-full hover:bg-white/5"
+                          title="Unsubscribe from Deck"
+                        >
+                          <Unlink size={16} />
+                        </button>
+                     )}
+                     </div>
                      <button className="text-gray-400 hover:text-white p-2">
                         <ChevronRight size={20} />
                      </button>

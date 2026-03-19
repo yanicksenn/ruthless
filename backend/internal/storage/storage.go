@@ -17,13 +17,15 @@ type Storage interface {
 	// Card operations
 	CreateCard(ctx context.Context, card *pb.Card) error
 	GetCard(ctx context.Context, id string) (*pb.Card, error)
-	ListCards(ctx context.Context, pageSize, pageNumber int32, ids []string, filter string, orderBy *pb.CardOrder) ([]*pb.Card, int32, error)
+	ListCards(ctx context.Context, ownerID string, pageSize, pageNumber int32, ids []string, filter string, orderBy *pb.CardOrder, deckID string, color pb.CardColor) ([]*pb.Card, int32, error)
 	DeleteCard(ctx context.Context, id string) error
+	UpdateCard(ctx context.Context, card *pb.Card) error
 
 	// User operations
 	CreateUser(ctx context.Context, user *pb.User) error
 	UpdateUser(ctx context.Context, user *pb.User) error
 	GetUser(ctx context.Context, id string) (*pb.User, error)
+	GetUserByIdentifier(ctx context.Context, identifier string) (*pb.User, error)
 
 	// Auth Token operations
 	RevokeToken(ctx context.Context, token string, expiresAt time.Time) error
@@ -39,7 +41,9 @@ type Storage interface {
 	CreateDeck(ctx context.Context, deck *pb.Deck) error
 	GetDeck(ctx context.Context, id string) (*pb.Deck, error)
 	UpdateDeck(ctx context.Context, deck *pb.Deck) error
-	ListDecks(ctx context.Context) ([]*pb.Deck, error)
+	ListDecks(ctx context.Context, ownerID string) ([]*pb.Deck, error)
+	SubscribeToDeck(ctx context.Context, deckID, userID string) error
+	UnsubscribeFromDeck(ctx context.Context, deckID, userID string) error
 
 	// Game operations
 	CreateGame(ctx context.Context, game *pb.Game) error

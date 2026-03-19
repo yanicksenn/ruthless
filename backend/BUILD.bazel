@@ -13,6 +13,7 @@ oci_image(
     name = "image",
     base = "@distroless_base",
     entrypoint = ["/usr/local/bin/cah"],
+    cmd = ["server"],
     tars = [
         "//backend/cmd/cah:cah_tar",
         ":config_tar",

@@ -64,7 +64,14 @@ resource "google_compute_url_map" "url_map" {
     default_service = google_compute_backend_service.frontend_backend.id
 
     path_rule {
-      paths   = ["/api/*", "/auth/*", "/grpc/*", "/*.proto"] # Based on typical routes for backend
+      paths   = [
+        "/auth/*",
+        "/ruthless.v1.CardService/*",
+        "/ruthless.v1.DeckService/*",
+        "/ruthless.v1.SessionService/*",
+        "/ruthless.v1.UserService/*",
+        "/ruthless.v1.GameService/*"
+      ]
       service = google_compute_backend_service.backend_backend.id
     }
   }

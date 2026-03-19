@@ -21,9 +21,9 @@ genrule(
         export HOME=$$TMP_DIR
         export npm_config_cache=$$TMP_DIR/.npm_cache
         
-        # Pass Vite Build Envs
-        export VITE_API_BASE_URL="http://localhost:8080"
-        export VITE_GOOGLE_CLIENT_ID="964146605436-cn068f6livloacebbi0itbhgvh9t5uns.apps.googleusercontent.com"
+        # Pass Vite Build Envs using Bazel defines
+        export VITE_API_BASE_URL="$(VITE_API_BASE_URL)"
+        export VITE_GOOGLE_CLIENT_ID="$(VITE_GOOGLE_CLIENT_ID)"
         
         # Install and build
         npm ci --no-audit --no-fund --loglevel=error
@@ -39,11 +39,17 @@ genrule(
     tags = ["requires-network"],
 )
 
+genrule(
+    name = "rename_nginx_conf",
+    srcs = ["nginx.conf"],
+    outs = ["default.conf"],
+    cmd = "cp $< $@",
+)
+
 pkg_tar(
     name = "nginx_conf_tar",
-    srcs = ["nginx.conf"],
+    srcs = ["default.conf"],
     package_dir = "/etc/nginx/conf.d",
-    remap_paths = {"nginx.conf": "default.conf"},
 )
 
 oci_image(

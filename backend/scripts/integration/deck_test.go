@@ -12,13 +12,18 @@ import (
 func runDeckTests(t *testing.T, ctx context.Context, c *testutil.TestClient, runID string) {
 	aliceCtx := c.GetAuthContext(ctx, "Alice")
 	aliceSub := "Alice"
+	if c.Store != nil {
+		c.Store.CreateUser(ctx, &pb.User{Id: aliceSub, Name: aliceSub})
+	}
+	aliceUser, err := c.UserClient.CompleteRegistration(aliceCtx, &pb.CompleteRegistrationRequest{Name: "Alice"})
+	testutil.AssertSuccess(t, err, "CompleteRegistration Alice (Fake)")
 
 	bobName := "DeckBob_" + runID
 	bobCtx := c.GetAuthContext(ctx, bobName)
 	if c.Store != nil {
 		c.Store.CreateUser(ctx, &pb.User{Id: bobName, Name: bobName})
 	}
-	_, err := c.UserClient.CompleteRegistration(bobCtx, &pb.CompleteRegistrationRequest{Name: bobName})
+	bobUser, err := c.UserClient.CompleteRegistration(bobCtx, &pb.CompleteRegistrationRequest{Name: bobName})
 	testutil.AssertSuccess(t, err, "CompleteRegistration Bob (Fake)")
 
 	t.Log("\n--- Deck & Card Suite ---")
@@ -50,7 +55,7 @@ func runDeckTests(t *testing.T, ctx context.Context, c *testutil.TestClient, run
 
 	// 5. SUCCESS: Alice adds Bob as contributor
 	t.Log("  [RUN] Alice adds Bob as contributor...")
-	_, err = c.DeckClient.AddContributor(aliceCtx, &pb.AddContributorRequest{DeckId: deck.Id, ContributorId: bobName})
+	_, err = c.DeckClient.AddContributor(aliceCtx, &pb.AddContributorRequest{DeckId: deck.Id, Identifier: bobUser.Identifier})
 	testutil.AssertSuccess(t, err, "AddContributor")
 
 	// 6. SUCCESS: Bob (Now contributor) adds card
@@ -67,7 +72,7 @@ func runDeckTests(t *testing.T, ctx context.Context, c *testutil.TestClient, run
 
 	// 8. FAILURE: Contributor removes contributor (only owner)
 	t.Log("  [RUN] Bob (contributor) tries to remove Alice (owner)...")
-	_, err = c.DeckClient.RemoveContributor(bobCtx, &pb.RemoveContributorRequest{DeckId: deck.Id, ContributorId: aliceSub})
+	_, err = c.DeckClient.RemoveContributor(bobCtx, &pb.RemoveContributorRequest{DeckId: deck.Id, Identifier: aliceUser.Identifier})
 	testutil.AssertError(t, err, codes.PermissionDenied, "authorized")
 
 	// 9. FAILURE: Non-contributor Charlie tries to remove card
@@ -90,6 +95,45 @@ func runDeckTests(t *testing.T, ctx context.Context, c *testutil.TestClient, run
 	for _, id := range deckPostRemove.CardIds {
 		if id == bobCard.Id {
 			t.Fatalf("Card %s should have been removed from deck", bobCard.Id)
+		}
+	}
+
+	// 12. SUCCESS: Charlie subscribes to Alice's deck
+	t.Log("  [RUN] Charlie subscribes to Alice's deck...")
+	_, err = c.DeckClient.SubscribeToDeck(charlieCtx, &pb.SubscribeToDeckRequest{DeckId: deck.Id})
+	testutil.AssertSuccess(t, err, "SubscribeToDeck Charlie")
+
+	// 13. Verify Charlie sees the deck in ListDecks
+	t.Log("  [RUN] Charlie lists decks and finds Alice's deck...")
+	listRes, err := c.DeckClient.ListDecks(charlieCtx, &pb.ListDecksRequest{})
+	testutil.AssertSuccess(t, err, "ListDecks Charlie")
+	found := false
+	for _, d := range listRes.Decks {
+		if d.Id == deck.Id {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("Charlie should see deck %s in ListDecks after subscribing", deck.Id)
+	}
+
+	// 14. FAILURE: Alice tries to subscribe to her own deck
+	t.Log("  [RUN] Alice tries to subscribe to her own deck...")
+	_, err = c.DeckClient.SubscribeToDeck(aliceCtx, &pb.SubscribeToDeckRequest{DeckId: deck.Id})
+	testutil.AssertError(t, err, codes.InvalidArgument, "cannot subscribe to your own deck")
+
+	// 15. SUCCESS: Charlie unsubscribes from Alice's deck
+	t.Log("  [RUN] Charlie unsubscribes from Alice's deck...")
+	_, err = c.DeckClient.UnsubscribeFromDeck(charlieCtx, &pb.UnsubscribeFromDeckRequest{DeckId: deck.Id})
+	testutil.AssertSuccess(t, err, "UnsubscribeFromDeck Charlie")
+
+	// 16. Verify Charlie no longer sees the deck
+	listRes, err = c.DeckClient.ListDecks(charlieCtx, &pb.ListDecksRequest{})
+	testutil.AssertSuccess(t, err, "ListDecks Charlie post-unsubscribe")
+	for _, d := range listRes.Decks {
+		if d.Id == deck.Id {
+			t.Fatalf("Charlie should not see deck %s in ListDecks after unsubscribing", deck.Id)
 		}
 	}
 }

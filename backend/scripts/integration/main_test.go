@@ -75,6 +75,18 @@ func TestIntegration(t *testing.T) {
 	t.Run("GameTests", func(t *testing.T) {
 		runGameTests(t, ctx, client, runID)
 	})
+	
+	t.Run("SessionListTests", func(t *testing.T) {
+		runSessionListTests(t, ctx, client, runID)
+	})
+
+	t.Run("AbandonmentTests", func(t *testing.T) {
+		runAbandonmentTests(t, ctx, client, runID)
+	})
+
+	t.Run("VisibilityTests", func(t *testing.T) {
+		runVisibilityTests(t, ctx, client, runID)
+	})
 
 	t.Log("✅ All Integration Tests Passed!")
 }

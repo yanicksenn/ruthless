@@ -50,28 +50,33 @@ module "database" {
   tier         = var.db_tier
 }
 
+data "external" "repo_hash" {
+  program = ["bash", "-c", "echo \"{\\\"hash\\\": \\\"$(git rev-parse --short HEAD)-$(git status --porcelain | shasum | awk '{print $1}' | cut -c1-8)\\\"}\""]
+  working_dir = "${path.module}/../../../"
+}
+
 resource "null_resource" "build_and_push_images" {
   triggers = {
-    always_run = timestamp()
+    image_tag = data.external.repo_hash.result["hash"]
   }
 
   depends_on = [module.artifact_registry]
 
   provisioner "local-exec" {
+    working_dir = "${path.module}/../../../"
     command = <<EOT
       set -e
-      export DOCKER_BUILDKIT=1
       gcloud auth configure-docker ${var.region}-docker.pkg.dev --quiet
       
-      docker build --platform linux/amd64 -t ${module.artifact_registry.repository_url}/backend:latest -f ../../../backend/Dockerfile ../../../
-      docker push ${module.artifact_registry.repository_url}/backend:latest
+      bazel run --platforms=@rules_go//go/toolchain:linux_amd64 //backend:tarball
+      docker tag backend:latest ${module.artifact_registry.repository_url}/backend:${data.external.repo_hash.result["hash"]}
+      docker push ${module.artifact_registry.repository_url}/backend:${data.external.repo_hash.result["hash"]}
       
-      docker build --platform linux/amd64 \
-        --build-arg VITE_API_BASE_URL="https://${var.domain}" \
-        --build-arg VITE_GOOGLE_CLIENT_ID="${var.google_client_id}" \
-        -t ${module.artifact_registry.repository_url}/frontend:latest \
-        -f ../../../frontend/Dockerfile ../../../frontend
-      docker push ${module.artifact_registry.repository_url}/frontend:latest
+      export VITE_API_BASE_URL="https://${var.domain}"
+      export VITE_GOOGLE_CLIENT_ID="${var.google_client_id}"
+      bazel run --define VITE_API_BASE_URL="$VITE_API_BASE_URL" --define VITE_GOOGLE_CLIENT_ID="$VITE_GOOGLE_CLIENT_ID" --platforms=@rules_go//go/toolchain:linux_amd64 //frontend:tarball
+      docker tag frontend:latest ${module.artifact_registry.repository_url}/frontend:${data.external.repo_hash.result["hash"]}
+      docker push ${module.artifact_registry.repository_url}/frontend:${data.external.repo_hash.result["hash"]}
     EOT
   }
 }
@@ -83,8 +88,8 @@ module "cloud_run" {
   project_id           = var.project_id
   environment          = var.environment
   region               = var.region
-  backend_image_url    = "${module.artifact_registry.repository_url}/backend:latest"
-  frontend_image_url   = "${module.artifact_registry.repository_url}/frontend:latest"
+  backend_image_url    = "${module.artifact_registry.repository_url}/backend:${data.external.repo_hash.result["hash"]}"
+  frontend_image_url   = "${module.artifact_registry.repository_url}/frontend:${data.external.repo_hash.result["hash"]}"
   db_connection_name   = module.database.instance_connection_name
   db_user              = module.database.db_user
   db_password          = module.database.db_password

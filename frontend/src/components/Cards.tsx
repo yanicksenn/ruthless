@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Plus, Trash2, LogOut, Search, ArrowUpDown, ChevronDown, FolderPlus, Check, X, Layers } from 'lucide-react';
+import { Plus, Trash2, LogOut, Search, ArrowUpDown, ChevronDown, FolderPlus, Check, X, Layers, Pencil } from 'lucide-react';
 import { cardClient, deckClient, createOptions } from '../api/client';
-import { Card, CardOrderField, Deck } from '../api/ruthless';
+import { Card, CardOrderField, CardColor, Deck } from '../api/ruthless';
 import { CreationDialog } from './CreationDialog';
 
 export const Cards: React.FC = () => {
@@ -11,11 +11,14 @@ export const Cards: React.FC = () => {
   const [decks, setDecks] = useState<Deck[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingCard, setEditingCard] = useState<Card | null>(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [filter, setFilter] = useState('');
   const [sortField, setSortField] = useState<CardOrderField>(CardOrderField.CREATED_AT);
   const [descending, setDescending] = useState(true);
+  const [colorFilter, setColorFilter] = useState<CardColor>(CardColor.UNSPECIFIED);
   const [activeCardIdDropdown, setActiveCardIdDropdown] = useState<string | null>(null);
   const pageSize = 12;
 
@@ -31,7 +34,9 @@ export const Cards: React.FC = () => {
           orderBy: {
             field: sortField,
             descending
-          }
+          },
+          color: colorFilter,
+          deckId: ""
         }, createOptions(token)),
         deckClient.listDecks({}, createOptions(token))
       ]);
@@ -48,12 +53,12 @@ export const Cards: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-  }, [token, pageNumber, filter, sortField, descending]);
+  }, [token, pageNumber, filter, sortField, descending, colorFilter]);
 
   // Reset to first page when filters change
   useEffect(() => {
     setPageNumber(1);
-  }, [filter, sortField, descending]);
+  }, [filter, sortField, descending, colorFilter]);
 
   const totalPages = Math.ceil(totalCount / pageSize);
 
@@ -67,6 +72,21 @@ export const Cards: React.FC = () => {
       fetchData();
     } catch (err) {
       alert(`Failed to create card`);
+    }
+  };
+
+  const handleEdit = (card: Card) => {
+    setEditingCard(card);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdate = async (value: string) => {
+    if (!editingCard) return;
+    try {
+      await cardClient.updateCard({ id: editingCard.id, text: value }, createOptions(token));
+      fetchData();
+    } catch (err: any) {
+      alert(`Failed to update card: ${err.message || err}`);
     }
   };
 
@@ -104,7 +124,10 @@ export const Cards: React.FC = () => {
               <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs font-bold ring-1 ring-primary/30">
                 {user.name.slice(0, 2).toUpperCase()}
               </div>
-              <span className="text-gray-300 font-bold text-sm tracking-tight">{user.name}</span>
+              <span className="text-gray-300 font-bold text-sm tracking-tight">
+                {user.name}
+                {user.identifier && <span className="text-gray-500 italic">#{user.identifier}</span>}
+              </span>
             </div>
           )}
         </div>
@@ -163,6 +186,20 @@ export const Cards: React.FC = () => {
                 >
                   <option value={CardOrderField.CREATED_AT} className="bg-background">Date Created</option>
                   <option value={CardOrderField.TEXT} className="bg-background">Card Text</option>
+                </select>
+              </div>
+              
+              {/* Type Filter */}
+              <div className="relative group/type min-w-[180px]">
+                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" size={16} />
+                <select
+                  value={colorFilter}
+                  onChange={(e) => setColorFilter(Number(e.target.value))}
+                  className="w-full appearance-none bg-white/5 border border-white/10 rounded-2xl py-3 pl-5 pr-12 text-white font-bold text-sm tracking-tight focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer hover:bg-white/10"
+                >
+                  <option value={CardColor.UNSPECIFIED} className="bg-background">All Types</option>
+                  <option value={CardColor.WHITE} className="bg-background">White Cards only</option>
+                  <option value={CardColor.BLACK} className="bg-background">Black Cards only</option>
                 </select>
               </div>
 
@@ -243,13 +280,22 @@ export const Cards: React.FC = () => {
                         )}
                       </div>
                       {user && card.ownerId === user.id && (
-                        <button 
-                          onClick={() => handleDelete(card.id)}
-                          className="p-1.5 hover:bg-red-500/10 hover:text-red-500 transition-all"
-                          title="Delete Card"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        <div className="flex gap-1">
+                          <button 
+                            onClick={() => handleEdit(card)}
+                            className="p-1.5 hover:bg-primary/10 hover:text-primary transition-all"
+                            title="Edit Card"
+                          >
+                            <Pencil size={16} />
+                          </button>
+                          <button 
+                            onClick={() => handleDelete(card.id)}
+                            className="p-1.5 hover:bg-red-500/10 hover:text-red-500 transition-all"
+                            title="Delete Card"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -298,6 +344,17 @@ export const Cards: React.FC = () => {
         label="Card Text"
         submitLabel="Create Card"
         maxLength={limits?.maxCardTextLength}
+      />
+      <CreationDialog
+        isOpen={isEditDialogOpen}
+        onClose={() => setIsEditDialogOpen(false)}
+        onCreate={handleUpdate}
+        title="Edit Card"
+        placeholder="Enter the text of your misery (use ___ for blanks)..."
+        label="Card Text"
+        submitLabel="Update Card"
+        maxLength={limits?.maxCardTextLength}
+        initialValue={editingCard?.text}
       />
     </div>
   );

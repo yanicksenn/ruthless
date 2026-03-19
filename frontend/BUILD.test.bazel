@@ -1,0 +1,5 @@
+genrule(
+    name = "test_eval",
+    outs = ["test_eval.txt"],
+    cmd = "echo 'URL=$(VITE_API_BASE_URL)' > $@",
+)

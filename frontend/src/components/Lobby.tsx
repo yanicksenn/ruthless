@@ -82,7 +82,8 @@ export const Lobby: React.FC<LobbyProps> = ({ onJoinSession, activeSessionId }) 
                 {user.name.slice(0, 2).toUpperCase()}
               </div>
               <span className="text-gray-300 font-bold text-sm tracking-tight">
-                {user.name}{user.identifier ? `#${user.identifier}` : ''}
+                {user.name}
+                {user.identifier && <span className="text-gray-500 italic">#{user.identifier}</span>}
               </span>
             </div>
           )}

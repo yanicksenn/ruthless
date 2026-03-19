@@ -70,14 +70,16 @@ func StartGame(game *pb.Game, minPlayers int) error {
 
 	for _, pid := range game.PlayerIds {
 		game.Scores[pid] = 0
-		hand := &pb.PlayerHand{Cards: make([]*pb.Card, 0)}
-		for i := 0; i < HandSize; i++ {
+		game.HiddenHands[pid] = &pb.PlayerHand{Cards: make([]*pb.Card, 0)}
+	}
+
+	for i := 0; i < HandSize; i++ {
+		for _, pid := range game.PlayerIds {
 			if len(game.HiddenWhiteDeck) > 0 {
-				hand.Cards = append(hand.Cards, game.HiddenWhiteDeck[0])
+				game.HiddenHands[pid].Cards = append(game.HiddenHands[pid].Cards, game.HiddenWhiteDeck[0])
 				game.HiddenWhiteDeck = game.HiddenWhiteDeck[1:]
 			}
 		}
-		game.HiddenHands[pid] = hand
 	}
 
 	// Start round 1

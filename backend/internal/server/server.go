@@ -132,10 +132,16 @@ func (s *Server) UnaryLoggingInterceptor() grpc.UnaryServerInterceptor {
 }
 
 func requiresAuth(method string) bool {
-	// Let's require auth for everything except Get and List for now, and Creates that are open.
-	// We will mirror the Chi router behaviour:
-	// /decks (POST requires auth), /decks (GET public), /decks/{id}/contributors (POST/DELETE auth), etc.
-	if strings.Contains(method, "CardService/CreateCard") || strings.Contains(method, "CardService/DeleteCard") {
+	if strings.HasPrefix(method, "/ruthless.v1.CardService/") {
+		if strings.Contains(method, "GetConfig") {
+			return false
+		}
+		return true
+	}
+	if strings.HasPrefix(method, "/ruthless.v1.DeckService/") {
+		if strings.Contains(method, "GetDeck") {
+			return false
+		}
 		return true
 	}
 	if strings.HasPrefix(method, "/ruthless.v1.SessionService/") {
@@ -144,19 +150,13 @@ func requiresAuth(method string) bool {
 		}
 		return true
 	}
-	if strings.HasPrefix(method, "/ruthless.v1.DeckService/") {
-		if strings.Contains(method, "ListDecks") || strings.Contains(method, "GetDeck") {
+	if strings.HasPrefix(method, "/ruthless.v1.GameService/") {
+		if strings.Contains(method, "GetGame") || strings.Contains(method, "GetGameBySession") {
 			return false
 		}
 		return true
 	}
 	if strings.HasPrefix(method, "/ruthless.v1.UserService/") {
-		return true
-	}
-	if strings.HasPrefix(method, "/ruthless.v1.GameService/") {
-		if strings.Contains(method, "GetGame") {
-			return false
-		}
 		return true
 	}
 

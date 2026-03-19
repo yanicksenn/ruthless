@@ -113,6 +113,7 @@ var cardsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all cards",
 	Run: func(cmd *cobra.Command, args []string) {
+		deckID, _ := cmd.Flags().GetString("deck-id")
 		conn, err := grpc.NewClient(grpcHost, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
 			log.Fatalf("Failed to connect: %v", err)
@@ -131,7 +132,9 @@ var cardsListCmd = &cobra.Command{
 			ctx = metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+token)
 		}
 
-		resp, err := client.ListCards(ctx, &pb.ListCardsRequest{})
+		resp, err := client.ListCards(ctx, &pb.ListCardsRequest{
+			DeckId: deckID,
+		})
 		if err != nil {
 			log.Fatalf("Failed to list cards: %v", err)
 		}
@@ -194,5 +197,6 @@ func init() {
 	cardsDeleteCmd.Flags().String("id", "", "The ID of the card to delete")
 	cardsDeleteCmd.MarkFlagRequired("id")
 
+	cardsListCmd.Flags().String("deck-id", "", "Filter cards by deck ID")
 	AddTokenFlags(cardsCmd)
 }

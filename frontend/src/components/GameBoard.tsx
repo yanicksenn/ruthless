@@ -239,6 +239,23 @@ export const GameBoard: React.FC<GameBoardProps> = ({ sessionId, onBack, onLeave
                     </div>
                  )}
 
+                 <div className="space-y-4 pt-4 border-t border-white/5">
+                    <h3 className="flex items-center gap-2 font-black uppercase text-xs tracking-widest text-gray-500">
+                      <Users size={14} /> Joined Players ({session?.playerIds.length || 0})
+                    </h3>
+                    <div className="grid grid-cols-2 gap-2">
+                       {(game.players || []).map(p => (
+                         <div key={p.id} className="p-3 rounded-xl bg-white/5 border border-white/10 text-xs font-bold flex items-center justify-between">
+                            <span className="truncate">
+                              {p.name}
+                              {p.identifier && <span className="text-gray-500 italic">#{p.identifier}</span>}
+                            </span>
+                            {p.id === session?.ownerId && <Crown size={12} className="text-primary flex-shrink-0" />}
+                         </div>
+                       ))}
+                    </div>
+                 </div>
+
                  {isOwner ? (
                     <button 
                       onClick={handleStartGame} 
@@ -255,113 +272,143 @@ export const GameBoard: React.FC<GameBoardProps> = ({ sessionId, onBack, onLeave
               </div>
            </div>
         ) : (
-           <div className="space-y-12">
-              {/* Black Card Display */}
-              <div className="flex justify-center">
-                 <motion.div 
-                   layoutId="black-card"
-                   className="bg-black border border-white/20 p-8 rounded-2xl w-full max-w-sm aspect-[3/4] flex flex-col justify-between card-shadow shadow-primary/20"
-                 >
-                    <p className="text-2xl font-black leading-tight tracking-tight">
-                       {renderBlackCardText(currentRound?.blackCard?.text || "")}
-                    </p>
-                    <div className="flex justify-between items-end">
-                       <div className="text-[10px] font-black tracking-[0.2em] opacity-30">RUTHLESS</div>
-                       <Crown className={isCzar ? "text-primary fill-primary" : "text-gray-800"} size={24} />
-                    </div>
-                 </motion.div>
-              </div>
+           <div className="flex flex-col lg:flex-row gap-8">
+             <div className="flex-1 space-y-12">
+                {/* Black Card Display */}
+                <div className="flex justify-center">
+                   <motion.div 
+                     layoutId="black-card"
+                     className="bg-black border border-white/20 p-8 rounded-2xl w-full max-w-sm aspect-[3/4] flex flex-col justify-between card-shadow shadow-primary/20"
+                   >
+                      <p className="text-2xl font-black leading-tight tracking-tight">
+                         {renderBlackCardText(currentRound?.blackCard?.text || "")}
+                      </p>
+                      <div className="flex justify-between items-end">
+                         <div className="text-[10px] font-black tracking-[0.2em] opacity-30">RUTHLESS</div>
+                         <Crown className={isCzar ? "text-primary fill-primary" : "text-gray-800"} size={24} />
+                      </div>
+                   </motion.div>
+                </div>
 
-              {/* Status Indicator */}
-              <div className="text-center space-y-2">
-                 {isCzar ? (
-                   <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/20 px-4 py-1.5 rounded-full text-primary font-black text-[10px] uppercase tracking-widest">
-                      <Crown size={12} fill="currentColor" /> You are the Czar
-                   </div>
-                 ) : (
-                   <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 px-4 py-1.5 rounded-full text-gray-400 font-black text-[10px] uppercase tracking-widest">
-                      <Users size={12} /> Submit your play
-                   </div>
-                 )}
-                 <h3 className="text-xl font-bold italic text-gray-500">
-                    {game.state === GameState.PLAYING ? "Players are choosing..." : "Czar is judging..."}
-                 </h3>
-              </div>
+                {/* Status Indicator */}
+                <div className="text-center space-y-2">
+                   {isCzar ? (
+                     <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/20 px-4 py-1.5 rounded-full text-primary font-black text-[10px] uppercase tracking-widest">
+                        <Crown size={12} fill="currentColor" /> You are the Czar
+                     </div>
+                   ) : (
+                     <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 px-4 py-1.5 rounded-full text-gray-400 font-black text-[10px] uppercase tracking-widest">
+                        <Users size={12} /> Submit your play
+                     </div>
+                   )}
+                   <h3 className="text-xl font-bold italic text-gray-500">
+                      {game.state === GameState.PLAYING ? "Players are choosing..." : "Czar is judging..."}
+                   </h3>
+                </div>
 
-              {/* Submissions or Hand */}
-              <div className="mt-12">
-                 {game.state === GameState.JUDGING ? (
-                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      {Object.entries(currentRound?.plays || {}).map(([pid, play]) => (
-                        <div 
-                           key={pid} 
-                           className={`glass p-6 rounded-2xl flex flex-col justify-between aspect-[4/3] relative group transition-all ${isCzar ? 'hover:border-primary cursor-pointer' : ''}`}
-                           onClick={() => isCzar && handleSelectWinner(play.id)}
-                           onMouseEnter={() => isCzar && setHoveredPlayId(play.id)}
-                           onMouseLeave={() => isCzar && setHoveredPlayId(null)}
-                        >
-                           <div className="space-y-2">
-                              {play.cards.map(c => (
-                                <p key={c.id} className="text-lg font-bold">{c.text}</p>
-                              ))}
-                           </div>
-                           {isCzar && (
-                             <div className="absolute inset-0 bg-primary/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl">
-                                <span className="bg-primary text-white font-black px-4 py-2 rounded-lg text-sm">ELECT WINNER</span>
+                {/* Submissions or Hand */}
+                <div className="mt-12">
+                   {game.state === GameState.JUDGING ? (
+                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {Object.entries(currentRound?.plays || {}).map(([pid, play]) => (
+                          <div 
+                             key={pid} 
+                             className={`glass p-6 rounded-2xl flex flex-col justify-between aspect-[4/3] relative group transition-all ${isCzar ? 'hover:border-primary cursor-pointer' : ''}`}
+                             onClick={() => isCzar && handleSelectWinner(play.id)}
+                             onMouseEnter={() => isCzar && setHoveredPlayId(play.id)}
+                             onMouseLeave={() => isCzar && setHoveredPlayId(null)}
+                          >
+                             <div className="space-y-2">
+                                {play.cards.map(c => (
+                                  <p key={c.id} className="text-lg font-bold">{c.text}</p>
+                                ))}
                              </div>
-                           )}
-                        </div>
-                      ))}
-                   </div>
-                 ) : !isCzar ? (
-                   <div className="space-y-6">
-                      <div className="flex justify-between items-center">
-                         <h3 className="font-black text-xs uppercase tracking-[0.2em] text-gray-500">Your Hand</h3>
-                         <button 
-                           onClick={handlePlayCards}
-                           disabled={selectedCards.length === 0}
-                           className="bg-primary hover:bg-primary-dark disabled:opacity-30 px-6 py-2 rounded-xl text-xs font-black transition-all"
-                         >
-                           SUBMIT SELECTION
-                         </button>
-                      </div>
-                      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                         {(hand || []).map((card) => (
-                           <div 
-                              key={card.id}
-                              onClick={() => {
-                                if (selectedCards.includes(card.id)) {
-                                  setSelectedCards(s => s.filter(id => id !== card.id));
-                                } else {
-                                  const blankCount = (currentRound?.blackCard?.text.split('___').length || 1) - 1;
-                                  if (selectedCards.length < Math.max(1, blankCount)) {
-                                    setSelectedCards(s => [...s, card.id]);
-                                  }
-                                }
-                              }}
-                              className={`p-4 rounded-xl border aspect-[1/1] text-sm font-bold transition-all flex flex-col justify-between cursor-pointer ${
-                                selectedCards.includes(card.id) 
-                                ? 'bg-white text-black border-white scale-105 z-10' 
-                                : 'bg-surface border-white/5 text-gray-300 hover:border-white/20'
-                              }`}
+                             {isCzar && (
+                               <div className="absolute inset-0 bg-primary/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl">
+                                  <span className="bg-primary text-white font-black px-4 py-2 rounded-lg text-sm">ELECT WINNER</span>
+                               </div>
+                             )}
+                          </div>
+                        ))}
+                     </div>
+                   ) : !isCzar ? (
+                     <div className="space-y-6">
+                        <div className="flex justify-between items-center">
+                           <h3 className="font-black text-xs uppercase tracking-[0.2em] text-gray-500">Your Hand</h3>
+                           <button 
+                             onClick={handlePlayCards}
+                             disabled={selectedCards.length === 0}
+                             className="bg-primary hover:bg-primary-dark disabled:opacity-30 px-6 py-2 rounded-xl text-xs font-black transition-all"
                            >
-                              <p className="line-clamp-4">{card.text}</p>
-                              <div className="flex justify-between items-center">
-                                <span className="text-[10px] font-black opacity-40">
-                                  {selectedCards.indexOf(card.id) !== -1 ? `#${selectedCards.indexOf(card.id) + 1}` : ''}
-                                </span>
-                                <div className="opacity-20"><Info size={12} /></div>
-                              </div>
-                           </div>
-                         ))}
+                             SUBMIT SELECTION
+                           </button>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                           {(hand || []).map((card) => (
+                             <div 
+                                key={card.id}
+                                onClick={() => {
+                                  if (selectedCards.includes(card.id)) {
+                                    setSelectedCards(s => s.filter(id => id !== card.id));
+                                  } else {
+                                    const blankCount = (currentRound?.blackCard?.text.split('___').length || 1) - 1;
+                                    if (selectedCards.length < Math.max(1, blankCount)) {
+                                      setSelectedCards(s => [...s, card.id]);
+                                    }
+                                  }
+                                }}
+                                className={`p-4 rounded-xl border aspect-[1/1] text-sm font-bold transition-all flex flex-col justify-between cursor-pointer ${
+                                  selectedCards.includes(card.id) 
+                                  ? 'bg-white text-black border-white scale-105 z-10' 
+                                  : 'bg-surface border-white/5 text-gray-300 hover:border-white/20'
+                                }`}
+                             >
+                                <p className="line-clamp-4">{card.text}</p>
+                                <div className="flex justify-between items-center">
+                                  <span className="text-[10px] font-black opacity-40">
+                                    {selectedCards.indexOf(card.id) !== -1 ? `#${selectedCards.indexOf(card.id) + 1}` : ''}
+                                  </span>
+                                  <div className="opacity-20"><Info size={12} /></div>
+                                </div>
+                             </div>
+                           ))}
+                        </div>
+                     </div>
+                   ) : (
+                      <div className="bg-white/5 border border-dashed border-white/10 p-12 rounded-3xl text-center">
+                         <p className="text-gray-500 font-bold italic">Wait for the plebs to finish their selections...</p>
                       </div>
+                   )}
+                </div>
+             </div>
+
+             {/* Right side container for players */}
+             <div className="w-full lg:w-72 space-y-4">
+                <div className="glass p-6 rounded-3xl border-primary/20 border-2 space-y-4 sticky top-24">
+                   <h3 className="flex items-center gap-2 font-black uppercase text-xs tracking-widest text-gray-500 mb-4">
+                     <Users size={14} /> Players
+                   </h3>
+                   <div className="space-y-2">
+                      {(game.players || []).map(p => {
+                        const isCzarNow = p.id === currentRound?.czarId;
+                        return (
+                          <div key={p.id} className={`p-3 rounded-xl border flex justify-between items-center ${isCzarNow ? 'bg-primary/20 border-primary/40 text-primary' : 'bg-white/5 border-white/10 text-white'}`}>
+                             <div className="flex items-center gap-2 truncate">
+                               {isCzarNow && <Crown size={14} className="flex-shrink-0" />}
+                               <span className="font-bold text-sm truncate">
+                                 {p.name}
+                                 {p.identifier && <span className="text-gray-500 italic">#{p.identifier}</span>}
+                               </span>
+                             </div>
+                             <div className="font-black text-xs bg-black/40 px-2 py-1 rounded-md">
+                                {game.scores[p.id] || 0}
+                             </div>
+                          </div>
+                        );
+                      })}
                    </div>
-                 ) : (
-                    <div className="bg-white/5 border border-dashed border-white/10 p-12 rounded-3xl text-center">
-                       <p className="text-gray-500 font-bold italic">Wait for the plebs to finish their selections...</p>
-                    </div>
-                 )}
-              </div>
+                </div>
+             </div>
            </div>
         )}
       </main>

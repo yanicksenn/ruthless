@@ -22,7 +22,7 @@ resource "google_cloud_run_service" "backend" {
         }
         env {
           name  = "DB_CONN_STR"
-          value = "postgres://${var.db_user}:${var.db_password}@localhost:5432/${var.db_name}?sslmode=disable"
+          value = "postgres://${var.db_user}:${urlencode(var.db_password)}@/${var.db_name}?host=/cloudsql/${var.db_connection_name}&sslmode=disable"
         }
         env {
           name  = "AUTH"

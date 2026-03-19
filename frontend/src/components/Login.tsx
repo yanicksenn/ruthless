@@ -12,7 +12,8 @@ export const Login: React.FC = () => {
   const isInvalidLength = chosenName.length > 0 && (chosenName.length < minLen || chosenName.length > maxLen);
 
   const handleGoogleLogin = () => {
-    window.location.href = 'http://localhost:8080/auth/google';
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+    window.location.href = `${baseUrl}/auth/google`;
   };
 
   const handleCompleteRegistration = async (e: React.FormEvent) => {

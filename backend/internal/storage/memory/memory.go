@@ -39,6 +39,11 @@ func (s *Storage) CreateCard(ctx context.Context, card *pb.Card) error {
 	if card.CreatedAt == nil {
 		card.CreatedAt = timestamppb.Now()
 	}
+	// Recalculate color to ensure consistency, matching Postgres generated column behavior
+	card.Color = pb.CardColor_CARD_COLOR_WHITE
+	if strings.Contains(card.Text, "___") {
+		card.Color = pb.CardColor_CARD_COLOR_BLACK
+	}
 	s.cards[card.Id] = card
 	return nil
 }
@@ -82,6 +87,22 @@ func (s *Storage) GetUser(ctx context.Context, id string) (*pb.User, error) {
 	return user, nil
 }
 
+func (s *Storage) GetUserByIdentifier(ctx context.Context, identifier string) (*pb.User, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	for _, user := range s.users {
+		if user.Identifier == identifier {
+			if user.Identifier == "" {
+				user.PendingCompletion = true
+			} else {
+				user.PendingCompletion = false
+			}
+			return user, nil
+		}
+	}
+	return nil, storage.ErrNotFound
+}
+
 // -- Token Methods
 func (s *Storage) RevokeToken(ctx context.Context, token string, expiresAt time.Time) error {
 	s.mu.Lock()
@@ -114,9 +135,21 @@ func (s *Storage) GetCard(ctx context.Context, id string) (*pb.Card, error) {
 	return card, nil
 }
 
-func (s *Storage) ListCards(ctx context.Context, pageSize, pageNumber int32, ids []string, filter string, orderBy *pb.CardOrder) ([]*pb.Card, int32, error) {
+func (s *Storage) ListCards(ctx context.Context, ownerID string, pageSize, pageNumber int32, ids []string, filter string, orderBy *pb.CardOrder, deckID string, color pb.CardColor) ([]*pb.Card, int32, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+
+	var deckCardIds map[string]bool
+	if deckID != "" {
+		deck, ok := s.decks[deckID]
+		if !ok {
+			return nil, 0, storage.ErrNotFound
+		}
+		deckCardIds = make(map[string]bool)
+		for _, id := range deck.CardIds {
+			deckCardIds[id] = true
+		}
+	}
 
 	var filteredCards []*pb.Card
 	idMap := make(map[string]bool)
@@ -125,12 +158,24 @@ func (s *Storage) ListCards(ctx context.Context, pageSize, pageNumber int32, ids
 	}
 
 	for _, c := range s.cards {
+		// Filter by Deck if provided
+		if deckID != "" && !deckCardIds[c.Id] {
+			continue
+		}
 		// Filter by ID list if provided
 		if len(ids) > 0 && !idMap[c.Id] {
 			continue
 		}
+		// Filter by owner if provided
+		if ownerID != "" && c.OwnerId != ownerID {
+			continue
+		}
 		// Filter by substring if provided
 		if filter != "" && !strings.Contains(strings.ToLower(c.Text), strings.ToLower(filter)) {
+			continue
+		}
+		// Filter by color if provided
+		if color != pb.CardColor_CARD_COLOR_UNSPECIFIED && c.Color != color {
 			continue
 		}
 		filteredCards = append(filteredCards, c)
@@ -185,6 +230,25 @@ func (s *Storage) DeleteCard(ctx context.Context, id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	delete(s.cards, id)
+	return nil
+}
+
+func (s *Storage) UpdateCard(ctx context.Context, card *pb.Card) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	stored, ok := s.cards[card.Id]
+	if !ok {
+		return storage.ErrNotFound
+	}
+	stored.Text = card.Text
+	stored.UpdatedAt = timestamppb.Now()
+
+	// Recalculate color
+	stored.Color = pb.CardColor_CARD_COLOR_WHITE
+	if strings.Contains(stored.Text, "___") {
+		stored.Color = pb.CardColor_CARD_COLOR_BLACK
+	}
+
 	return nil
 }
 
@@ -283,15 +347,67 @@ func (s *Storage) UpdateDeck(ctx context.Context, deck *pb.Deck) error {
 	return nil
 }
 
-func (s *Storage) ListDecks(ctx context.Context) ([]*pb.Deck, error) {
+func (s *Storage) ListDecks(ctx context.Context, ownerID string) ([]*pb.Deck, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	list := make([]*pb.Deck, 0, len(s.decks))
 	for _, d := range s.decks {
-		list = append(list, d)
+		isContributor := false
+		for _, c := range d.Contributors {
+			if c == ownerID {
+				isContributor = true
+				break
+			}
+		}
+
+		isSubscriber := false
+		for _, sub := range d.Subscribers {
+			if sub == ownerID {
+				isSubscriber = true
+				break
+			}
+		}
+
+		if ownerID == "" || d.OwnerId == ownerID || isContributor || isSubscriber {
+			list = append(list, d)
+		}
 	}
 	return list, nil
+}
+
+func (s *Storage) SubscribeToDeck(ctx context.Context, deckID, userID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	deck, ok := s.decks[deckID]
+	if !ok {
+		return storage.ErrNotFound
+	}
+	for _, id := range deck.Subscribers {
+		if id == userID {
+			return nil
+		}
+	}
+	deck.Subscribers = append(deck.Subscribers, userID)
+	return nil
+}
+
+func (s *Storage) UnsubscribeFromDeck(ctx context.Context, deckID, userID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	deck, ok := s.decks[deckID]
+	if !ok {
+		return storage.ErrNotFound
+	}
+	for i, id := range deck.Subscribers {
+		if id == userID {
+			deck.Subscribers = append(deck.Subscribers[:i], deck.Subscribers[i+1:]...)
+			return nil
+		}
+	}
+	return storage.ErrNotFound
 }
 
 // -- Game Methods

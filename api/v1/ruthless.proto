@@ -26,6 +26,7 @@ message Card {
 message Player {
   string id = 1;
   string name = 2;
+  string identifier = 3;
 }
 
 message User {
@@ -44,6 +45,9 @@ message Deck {
   repeated string card_ids = 5;
   google.protobuf.Timestamp created_at = 6;
   google.protobuf.Timestamp updated_at = 7;
+  repeated string subscribers = 8;
+  repeated Player contributor_players = 9;
+  Player owner_player = 10;
 }
 
 message Session {
@@ -116,6 +120,8 @@ message ListCardsRequest {
   repeated string ids = 3;
   string filter = 4;
   CardOrder order_by = 5;
+  string deck_id = 6;
+  CardColor color = 7;
 }
 
 message ListCardsResponse {
@@ -131,9 +137,15 @@ message CreateCardRequest {
   string text = 1;
 }
 
+message UpdateCardRequest {
+  string id = 1;
+  string text = 2;
+}
+
 service CardService {
   rpc ListCards (ListCardsRequest) returns (ListCardsResponse);
   rpc CreateCard (CreateCardRequest) returns (Card);
+  rpc UpdateCard (UpdateCardRequest) returns (Card);
   rpc DeleteCard (DeleteCardRequest) returns (google.protobuf.Empty);
   rpc GetConfig (google.protobuf.Empty) returns (ConfigPublic);
 }
@@ -155,13 +167,13 @@ message CreateDeckRequest {
 
 message AddContributorRequest {
   string deck_id = 1;
-  string contributor_id = 2;
+  string identifier = 2;
 }
 message AddContributorResponse {}
 
 message RemoveContributorRequest {
   string deck_id = 1;
-  string contributor_id = 2;
+  string identifier = 2;
 }
 message RemoveContributorResponse {}
 
@@ -177,6 +189,16 @@ message RemoveCardFromDeckRequest {
 }
 message RemoveCardFromDeckResponse {}
 
+message SubscribeToDeckRequest {
+  string deck_id = 1;
+}
+message SubscribeToDeckResponse {}
+
+message UnsubscribeFromDeckRequest {
+  string deck_id = 1;
+}
+message UnsubscribeFromDeckResponse {}
+
 service DeckService {
   rpc ListDecks (ListDecksRequest) returns (ListDecksResponse);
   rpc GetDeck (GetDeckRequest) returns (Deck);
@@ -185,6 +207,8 @@ service DeckService {
   rpc RemoveContributor (RemoveContributorRequest) returns (RemoveContributorResponse);
   rpc AddCardToDeck (AddCardToDeckRequest) returns (AddCardToDeckResponse);
   rpc RemoveCardFromDeck (RemoveCardFromDeckRequest) returns (RemoveCardFromDeckResponse);
+  rpc SubscribeToDeck (SubscribeToDeckRequest) returns (SubscribeToDeckResponse);
+  rpc UnsubscribeFromDeck (UnsubscribeFromDeckRequest) returns (UnsubscribeFromDeckResponse);
 }
 
 // ----------------- Session Service -----------------

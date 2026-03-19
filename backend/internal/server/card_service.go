@@ -13,7 +13,31 @@ import (
 )
 
 func (s *Server) ListCards(ctx context.Context, req *pb.ListCardsRequest) (*pb.ListCardsResponse, error) {
-	cards, totalCount, err := s.store.ListCards(ctx, req.PageSize, req.PageNumber, req.Ids, req.Filter, req.OrderBy)
+	player, ok := getPlayer(ctx)
+	if !ok {
+		return nil, status.Errorf(codes.Unauthenticated, "unauthorized")
+	}
+	fetchOwnerID := player.Id
+	if len(req.Ids) > 0 {
+		fetchOwnerID = ""
+	}
+
+	if req.DeckId != "" {
+		deck, err := s.store.GetDeck(ctx, req.DeckId)
+		if err != nil {
+			if err == storage.ErrNotFound {
+				return nil, status.Errorf(codes.NotFound, "deck not found")
+			}
+			return nil, status.Errorf(codes.Internal, "failed to get deck")
+		}
+		if !domain.CanViewDeck(deck, player.Id) {
+			return nil, status.Errorf(codes.PermissionDenied, "unauthorized to view cards in this deck")
+		}
+		// If authorized to view the deck, allow listing all cards in it
+		fetchOwnerID = ""
+	}
+
+	cards, totalCount, err := s.store.ListCards(ctx, fetchOwnerID, req.PageSize, req.PageNumber, req.Ids, req.Filter, req.OrderBy, req.DeckId, req.Color)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to list cards")
 	}
@@ -53,6 +77,38 @@ func (s *Server) CreateCard(ctx context.Context, req *pb.CreateCardRequest) (*pb
 
 	if err := s.store.CreateCard(ctx, card); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to save card: %v", err)
+	}
+
+	return card, nil
+}
+
+func (s *Server) UpdateCard(ctx context.Context, req *pb.UpdateCardRequest) (*pb.Card, error) {
+	player, ok := getPlayer(ctx)
+	if !ok {
+		return nil, status.Errorf(codes.Unauthenticated, "unauthorized")
+	}
+
+	card, err := s.store.GetCard(ctx, req.Id)
+	if err != nil {
+		if err == storage.ErrNotFound {
+			return nil, status.Errorf(codes.NotFound, "card not found")
+		}
+		return nil, status.Errorf(codes.Internal, "failed to get card")
+	}
+
+	if card.OwnerId != player.Id {
+		return nil, status.Errorf(codes.PermissionDenied, "unauthorized to update this card")
+	}
+
+	if s.config != nil && s.config.Public != nil && s.config.Public.Limits != nil {
+		if s.config.Public.Limits.MaxCardTextLength > 0 && uint32(len(req.Text)) > s.config.Public.Limits.MaxCardTextLength {
+			return nil, status.Errorf(codes.InvalidArgument, "card text exceeds limit of %d characters", s.config.Public.Limits.MaxCardTextLength)
+		}
+	}
+
+	card.Text = req.Text
+	if err := s.store.UpdateCard(ctx, card); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to update card: %v", err)
 	}
 
 	return card, nil
