@@ -32,12 +32,18 @@ bazel run //backend/cmd/cah -- decks list --token-file secrets/id_token.txt
 
 Ruthless enforces a strict security model to ensure fair play and data integrity:
 
-- **Enforced Registration**: Every player must be registered in the database before they can access authenticated services. Even with a valid OAuth token, the server will reject requests with `PermissionDenied` if the sub (user ID) is not found in the `users` table. Use `UserService.Register` to create your profile.
-- **Resource Ownership**:
+- **Enforced Registration**: Every player must be registered in the database before they can access authenticated services. In `fake` auth mode (development), the server automatically creates a user profile if it doesn't exist upon the first login attempt. In production, users must be registered via the `UserService.Register` flow.
+- **Resource Ownership & Permissions**:
   - **Cards**: All cards have an owner. Only the creator of a card can add it to a deck.
-  - **Decks**: Decks have an owner and optional contributors. Only authorized users can modify a deck's metadata or card list.
+  - **Decks**:
+    - **Owner**: The creator of the deck. Has full control.
+    - **Contributors**: Users who can add or remove cards from a deck.
+    - **Subscribers**: Users who can view the deck and use it in sessions.
   - **Sessions**: The session owner (creator) is the only one who can add decks or start the game.
 - **Role Enforcement**: During gameplay, the system strictly enforces roles. Only the **Czar** can select a winner, and the Czar is prohibited from playing white cards in their own round.
+- **Card Selection Features**:
+  - **Card Exclusion**: When listing cards for a deck, the system supports excluding cards that are already present in the deck to avoid duplicates.
+  - **Contributor Tracking**: The system tracks which contributor added which card to a deck, and this information is visible in the UI.
 
 ## Usage
 
@@ -110,7 +116,7 @@ Follow the URL in the terminal to log in. The test will automatically capture th
 You can run the entire stack via Docker Compose:
 
 ```bash
-docker-compose up -d
+docker-compose -f docker-compose.prod.yml up -d
 ```
 Then run tests against the active container by providing the `--addr` flag:
 ```bash

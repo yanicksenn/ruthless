@@ -340,6 +340,9 @@ func (s *Storage) CreateDeck(ctx context.Context, deck *pb.Deck) error {
 	if deck.CreatedAt == nil {
 		deck.CreatedAt = timestamppb.Now()
 	}
+	if deck.CardContributorIds == nil {
+		deck.CardContributorIds = make(map[string]string)
+	}
 	s.decks[deck.Id] = deck
 	return nil
 }

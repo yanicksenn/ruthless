@@ -593,7 +593,11 @@ func (s *Storage) CreateDeck(ctx context.Context, deck *pb.Deck) error {
 	}
 
 	for _, cardID := range deck.CardIds {
-		_, err = tx.ExecContext(ctx, "INSERT INTO deck_cards (deck_id, card_id) VALUES ($1, $2)", deck.Id, cardID)
+		contributorID := deck.CardContributorIds[cardID]
+		if contributorID == "" {
+			contributorID = deck.OwnerId
+		}
+		_, err = tx.ExecContext(ctx, "INSERT INTO deck_cards (deck_id, card_id, contributor_id) VALUES ($1, $2, $3)", deck.Id, cardID, contributorID)
 		if err != nil {
 			return err
 		}
@@ -635,17 +639,24 @@ func (s *Storage) GetDeck(ctx context.Context, id string) (*pb.Deck, error) {
 	}
 
 	// Fetch cards
-	rows, err = s.db.QueryContext(ctx, "SELECT card_id FROM deck_cards WHERE deck_id = $1", id)
+	rows, err = s.db.QueryContext(ctx, "SELECT card_id, contributor_id FROM deck_cards WHERE deck_id = $1", id)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
+	if d.CardContributorIds == nil {
+		d.CardContributorIds = make(map[string]string)
+	}
 	for rows.Next() {
 		var cardID string
-		if err := rows.Scan(&cardID); err != nil {
+		var contributorID sql.NullString
+		if err := rows.Scan(&cardID, &contributorID); err != nil {
 			return nil, err
 		}
 		d.CardIds = append(d.CardIds, cardID)
+		if contributorID.Valid {
+			d.CardContributorIds[cardID] = contributorID.String
+		}
 	}
 
 	// Fetch subscribers
@@ -699,7 +710,11 @@ func (s *Storage) UpdateDeck(ctx context.Context, deck *pb.Deck) error {
 		return err
 	}
 	for _, cardID := range deck.CardIds {
-		_, err = tx.ExecContext(ctx, "INSERT INTO deck_cards (deck_id, card_id) VALUES ($1, $2)", deck.Id, cardID)
+		contributorID := deck.CardContributorIds[cardID]
+		if contributorID == "" {
+			contributorID = deck.OwnerId
+		}
+		_, err = tx.ExecContext(ctx, "INSERT INTO deck_cards (deck_id, card_id, contributor_id) VALUES ($1, $2, $3)", deck.Id, cardID, contributorID)
 		if err != nil {
 			return err
 		}
@@ -763,17 +778,24 @@ func (s *Storage) ListDecks(ctx context.Context, ownerID string) ([]*pb.Deck, er
 		cRows.Close()
 
 		// Cards
-		cardRows, err := s.db.QueryContext(ctx, "SELECT card_id FROM deck_cards WHERE deck_id = $1", d.Id)
+		cardRows, err := s.db.QueryContext(ctx, "SELECT card_id, contributor_id FROM deck_cards WHERE deck_id = $1", d.Id)
 		if err != nil {
 			return nil, err
 		}
+		if d.CardContributorIds == nil {
+			d.CardContributorIds = make(map[string]string)
+		}
 		for cardRows.Next() {
 			var cardID string
-			if err := cardRows.Scan(&cardID); err != nil {
+			var contributorID sql.NullString
+			if err := cardRows.Scan(&cardID, &contributorID); err != nil {
 				cardRows.Close()
 				return nil, err
 			}
 			d.CardIds = append(d.CardIds, cardID)
+			if contributorID.Valid {
+				d.CardContributorIds[cardID] = contributorID.String
+			}
 		}
 		cardRows.Close()
 

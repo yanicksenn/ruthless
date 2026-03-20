@@ -129,6 +129,12 @@ export interface Deck {
      * @generated from protobuf field: ruthless.v1.Player owner_player = 10
      */
     ownerPlayer?: Player;
+    /**
+     * @generated from protobuf field: map<string, string> card_contributor_ids = 11;
+     */
+    cardContributorIds: {
+        [key: string]: string;
+    };
 }
 /**
  * @generated from protobuf message ruthless.v1.Session
@@ -996,7 +1002,8 @@ class Deck$Type extends MessageType<Deck> {
             { no: 7, name: "updated_at", kind: "message", T: () => Timestamp },
             { no: 8, name: "subscribers", kind: "scalar", repeat: 2 /*RepeatType.UNPACKED*/, T: 9 /*ScalarType.STRING*/ },
             { no: 9, name: "contributor_players", kind: "message", repeat: 2 /*RepeatType.UNPACKED*/, T: () => Player },
-            { no: 10, name: "owner_player", kind: "message", T: () => Player }
+            { no: 10, name: "owner_player", kind: "message", T: () => Player },
+            { no: 11, name: "card_contributor_ids", kind: "map", K: 9 /*ScalarType.STRING*/, V: { kind: "scalar", T: 9 /*ScalarType.STRING*/ } }
         ]);
     }
     create(value?: PartialMessage<Deck>): Deck {
@@ -1008,6 +1015,7 @@ class Deck$Type extends MessageType<Deck> {
         message.cardIds = [];
         message.subscribers = [];
         message.contributorPlayers = [];
+        message.cardContributorIds = {};
         if (value !== undefined)
             reflectionMergePartial<Deck>(this, message, value);
         return message;
@@ -1047,6 +1055,9 @@ class Deck$Type extends MessageType<Deck> {
                 case /* ruthless.v1.Player owner_player */ 10:
                     message.ownerPlayer = Player.internalBinaryRead(reader, reader.uint32(), options, message.ownerPlayer);
                     break;
+                case /* map<string, string> card_contributor_ids = 11 */ 11:
+                    this.binaryReadMap11(message.cardContributorIds, reader, options);
+                    break;
                 default:
                     let u = options.readUnknownField;
                     if (u === "throw")
@@ -1057,6 +1068,18 @@ class Deck$Type extends MessageType<Deck> {
             }
         }
         return message;
+    }
+    private binaryReadMap11(map: Deck["cardContributorIds"], reader: IBinaryReader, options: BinaryReadOptions): void {
+        let len = reader.uint32(), end = reader.pos + len, key: keyof Deck["cardContributorIds"] | undefined, val: Deck["cardContributorIds"][any] | undefined;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case 1: key = reader.string(); break;
+                case 2: val = reader.string(); break;
+                default: throw new globalThis.Error("unknown map entry field for ruthless.v1.Deck.card_contributor_ids");
+            }
+        }
+        map[key ?? ""] = val ?? "";
     }
     internalBinaryWrite(message: Deck, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
         /* string id = 1; */
@@ -1089,6 +1112,9 @@ class Deck$Type extends MessageType<Deck> {
         /* ruthless.v1.Player owner_player = 10; */
         if (message.ownerPlayer)
             Player.internalBinaryWrite(message.ownerPlayer, writer.tag(10, WireType.LengthDelimited).fork(), options).join();
+        /* map<string, string> card_contributor_ids = 11; */
+        for (let k of globalThis.Object.keys(message.cardContributorIds))
+            writer.tag(11, WireType.LengthDelimited).fork().tag(1, WireType.LengthDelimited).string(k).tag(2, WireType.LengthDelimited).string(message.cardContributorIds[k]).join();
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);

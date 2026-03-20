@@ -48,6 +48,7 @@ message Deck {
   repeated string subscribers = 8;
   repeated Player contributor_players = 9;
   Player owner_player = 10;
+  map<string, string> card_contributor_ids = 11; // card_id -> contributor_id
 }
 
 message Session {

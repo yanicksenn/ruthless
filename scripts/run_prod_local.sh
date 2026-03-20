@@ -8,4 +8,4 @@ echo "==> Building and loading frontend image..."
 bazel run --platforms=@rules_go//go/toolchain:linux_amd64 //frontend:tarball
 
 echo "==> Starting environment..."
-docker-compose up -d
+docker-compose -p ruthless-prod -f docker-compose.prod.yml up -d

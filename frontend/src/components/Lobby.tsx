@@ -20,26 +20,36 @@ export const Lobby: React.FC<LobbyProps> = ({ onJoinSession, activeSessionId }) 
   const [loading, setLoading] = useState(true);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-  const fetchData = async () => {
+  const fetchSessions = async () => {
     try {
-      const [sessionsRes, decksRes] = await Promise.all([
-        sessionClient.listSessions({}, createOptions(token)),
-        deckClient.listDecks({}, createOptions(token))
-      ]);
-      setSessions(sessionsRes.response.sessions);
-      setDecks(decksRes.response.decks || []);
+      const response = await sessionClient.listSessions({}, createOptions(token));
+      setSessions(response.response.sessions);
     } catch (err) {
-      console.error('Failed to fetch data:', err);
+      console.error('Failed to fetch sessions:', err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 5000); // Poll every 5s
+    fetchSessions();
+    const interval = setInterval(fetchSessions, 5000); // Poll every 5s
     return () => clearInterval(interval);
   }, [token]);
+
+  const handleOpenCreateModal = async () => {
+    setLoading(true);
+    try {
+      const decksRes = await deckClient.listDecks({}, createOptions(token));
+      setDecks(decksRes.response.decks || []);
+      setIsCreateModalOpen(true);
+    } catch (err) {
+      console.error('Failed to fetch decks:', err);
+      alert('Failed to fetch available decks');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleJoinSession = async (sessionId: string) => {
     if (sessionId === activeSessionId) {
@@ -90,7 +100,7 @@ export const Lobby: React.FC<LobbyProps> = ({ onJoinSession, activeSessionId }) 
         </div>
         <div className="flex gap-3">
           <button
-            onClick={() => setIsCreateModalOpen(true)}
+            onClick={handleOpenCreateModal}
             className="bg-secondary hover:bg-secondary/80 text-black font-black px-6 py-3 rounded-2xl flex items-center gap-2 transition-all transform hover:scale-105 shadow-lg shadow-secondary/10"
           >
             <Plus size={20} />

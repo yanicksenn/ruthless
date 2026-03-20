@@ -51,6 +51,9 @@ func New(store storage.Storage, authenticator auth.Authenticator, config *pb.Con
 	// Detect development mode based on authenticator type
 	if _, ok := authenticator.(*auth.FakeAuthenticator); ok {
 		config.Public.IsDevelopment = true
+		config.Public.AuthProvider = pb.ConfigPublic_AUTH_PROVIDER_FAKE
+	} else {
+		config.Public.AuthProvider = pb.ConfigPublic_AUTH_PROVIDER_GOOGLE
 	}
 
 
@@ -102,10 +105,22 @@ func (s *Server) UnaryAuthInterceptor() grpc.UnaryServerInterceptor {
 		user, err := s.store.GetUser(ctx, player.Id)
 		if err != nil {
 			if err == storage.ErrNotFound {
-				// This shouldn't happen with our new flow, but if it does, the user record is missing.
-				return nil, status.Errorf(codes.Unauthenticated, "user profile not found")
+				if s.config.Public.IsDevelopment {
+					// In development mode, auto-create the user profile if it's missing.
+					user = &pb.User{
+						Id:                player.Id,
+						Name:              player.Name,
+						PendingCompletion: true,
+					}
+					if createErr := s.store.CreateUser(ctx, user); createErr != nil && createErr != storage.ErrAlreadyExists {
+						return nil, status.Errorf(codes.Internal, "failed to auto-create user: %v", createErr)
+					}
+				} else {
+					return nil, status.Errorf(codes.Unauthenticated, "user profile not found")
+				}
+			} else {
+				return nil, status.Errorf(codes.Internal, "failed to fetch user: %v", err)
 			}
-			return nil, status.Errorf(codes.Internal, "failed to fetch user: %v", err)
 		}
 
 		// If user is pending completion, block all requests except GetMe and CompleteRegistration

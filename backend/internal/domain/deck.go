@@ -77,6 +77,10 @@ func AddCardToDeck(d *pb.Deck, userID string, cardID string) error {
 		return ErrUnauthorized
 	}
 	d.CardIds = append(d.CardIds, cardID)
+	if d.CardContributorIds == nil {
+		d.CardContributorIds = make(map[string]string)
+	}
+	d.CardContributorIds[cardID] = userID
 	return nil
 }
 
@@ -87,6 +91,9 @@ func RemoveCardFromDeck(d *pb.Deck, userID string, cardID string) error {
 	for i, id := range d.CardIds {
 		if id == cardID {
 			d.CardIds = append(d.CardIds[:i], d.CardIds[i+1:]...)
+			if d.CardContributorIds != nil {
+				delete(d.CardContributorIds, cardID)
+			}
 			return nil
 		}
 	}

@@ -43,6 +43,27 @@ export interface ConfigPublic {
      * @generated from protobuf field: bool is_development = 4
      */
     isDevelopment: boolean;
+    /**
+     * @generated from protobuf field: ruthless.v1.ConfigPublic.AuthProvider auth_provider = 5
+     */
+    authProvider: ConfigPublic_AuthProvider;
+}
+/**
+ * @generated from protobuf enum ruthless.v1.ConfigPublic.AuthProvider
+ */
+export enum ConfigPublic_AuthProvider {
+    /**
+     * @generated from protobuf enum value: AUTH_PROVIDER_UNSPECIFIED = 0;
+     */
+    UNSPECIFIED = 0,
+    /**
+     * @generated from protobuf enum value: AUTH_PROVIDER_GOOGLE = 1;
+     */
+    GOOGLE = 1,
+    /**
+     * @generated from protobuf enum value: AUTH_PROVIDER_FAKE = 2;
+     */
+    FAKE = 2
 }
 /**
  * @generated from protobuf message ruthless.v1.ConfigPublic.Limits
@@ -201,12 +222,14 @@ class ConfigPublic$Type extends MessageType<ConfigPublic> {
             { no: 1, name: "limits", kind: "message", T: () => ConfigPublic_Limits },
             { no: 2, name: "game", kind: "message", T: () => ConfigPublic_Game },
             { no: 3, name: "registration", kind: "message", T: () => ConfigPublic_Registration },
-            { no: 4, name: "is_development", kind: "scalar", T: 8 /*ScalarType.BOOL*/ }
+            { no: 4, name: "is_development", kind: "scalar", T: 8 /*ScalarType.BOOL*/ },
+            { no: 5, name: "auth_provider", kind: "enum", T: () => ["ruthless.v1.ConfigPublic.AuthProvider", ConfigPublic_AuthProvider, "AUTH_PROVIDER_"] }
         ]);
     }
     create(value?: PartialMessage<ConfigPublic>): ConfigPublic {
         const message = globalThis.Object.create((this.messagePrototype!));
         message.isDevelopment = false;
+        message.authProvider = 0;
         if (value !== undefined)
             reflectionMergePartial<ConfigPublic>(this, message, value);
         return message;
@@ -227,6 +250,9 @@ class ConfigPublic$Type extends MessageType<ConfigPublic> {
                     break;
                 case /* bool is_development */ 4:
                     message.isDevelopment = reader.bool();
+                    break;
+                case /* ruthless.v1.ConfigPublic.AuthProvider auth_provider */ 5:
+                    message.authProvider = reader.int32();
                     break;
                 default:
                     let u = options.readUnknownField;
@@ -252,6 +278,9 @@ class ConfigPublic$Type extends MessageType<ConfigPublic> {
         /* bool is_development = 4; */
         if (message.isDevelopment !== false)
             writer.tag(4, WireType.Varint).bool(message.isDevelopment);
+        /* ruthless.v1.ConfigPublic.AuthProvider auth_provider = 5; */
+        if (message.authProvider !== 0)
+            writer.tag(5, WireType.Varint).int32(message.authProvider);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);

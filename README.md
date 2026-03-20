@@ -1,9 +1,10 @@
 # Ruthless - Cards Against Humanity Clone
 
-Ruthless is a greenfield clone of Cards Against Humanity built in Go (Backend) with a planned front-end structure. It uses **Bazel** for its build system and **gRPC** for efficient, strongly-typed communication.
+Ruthless is a greenfield clone of Cards Against Humanity built in Go (Backend) and React (Frontend). It uses **Bazel** for its build system and **gRPC** for efficient, strongly-typed communication.
 
 ## Features
 
+- **Web UI**: A modern, responsive React interface for browsing decks, creating sessions, and playing games.
 - **gRPC Backend API**: High-performance gRPC endpoints to manage cards, decks, games, and sessions.
 - **Custom Card Decks**: Create personalized decks of white and black cards. The system automatically classifies cards with blanks (e.g. `___`) as Black Cards.
 - **Session-Based Games**: Play full game loops tied to specific sessions using your custom decks.
@@ -13,37 +14,42 @@ Ruthless is a greenfield clone of Cards Against Humanity built in Go (Backend) w
 
 ## Project Structure
 
-The repository is built as a monorepo partitioned into cleanly separated frontend and backend codebases:
+The repository is organized as a monorepo:
 - [backend/](backend/README.md): Core Go implementation, gRPC API, and server logic.
-- `api/v1`: Protobuf definitions for the gRPC services and entities.
-- `frontend/`: (Planned) Directory for the upcoming web client.
-- `terraform/`: GCP deployment configurations.
+- [frontend/](frontend/README.md): Modern React web client built with Vite and Tailwind CSS.
+- [api/](api/README.md): Protobuf definitions for gRPC services and entities.
+- [scripts/](scripts/README.md): Utility scripts for environment management and local deployment.
+- [terraform/](terraform/README.md): GCP deployment configurations.
 - `secrets/`: Local directory for sensitive credentials.
 
-For detailed technical documentation on authentication, security models, and backend testing, see the [Backend README](backend/README.md).
+For detailed instructions on verification and testing, see [GEMINI.md](GEMINI.md).
 
 ## Usage
 
 ### Docker (Quick Start)
 
-You can run the entire stack via Docker Compose:
+The easiest way to run the entire stack is via the provided scripts:
 
 ```bash
-docker-compose up -d
-docker-compose down -v
+# Development (Fake Auth - recommended for local browser testing)
+./scripts/run_dev_local.sh
+
+# Production (Google Auth - requires real credentials)
+./scripts/run_prod_local.sh
+
+# Stop
+./scripts/stop_dev_local.sh
+./scripts/stop_prod_local.sh
 ```
 
-To view logs:
-```bash
-docker-compose logs -f backend
-```
+> [!IMPORTANT]
+> To verify whether a feature works in the browser through automated tests, you MUST use the `dev` environment (`docker-compose.dev.yml`). The `prod` environment uses Google OAuth which cannot be easily bypassed for testing.
 
 ### CLI Client
 
-The CLI tool acts as a full game client! Most commands require a token for identification, which can be provided via a flag or a file.
-- **Using flags**: Use `--token Alice`. In **fake auth** (default local), use any name.
-- **Using files**: Use `--token-file /path/to/token.txt`. The CLI will read the token from the file.
-- In **google auth**, use a real ID Token (see Backend README).
+The CLI tool acts as a full game client! Most commands require a token for identification.
+- **In fake auth**: Use any string as a token (e.g., `--token Alice`).
+- **In google auth**: Use a real ID Token (see [Backend README](backend/README.md)).
 
 #### **Interactive TUI Mode (Recommended)**
 ```bash

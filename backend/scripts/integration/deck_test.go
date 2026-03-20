@@ -136,4 +136,26 @@ func runDeckTests(t *testing.T, ctx context.Context, c *testutil.TestClient, run
 			t.Fatalf("Charlie should not see deck %s in ListDecks after unsubscribing", deck.Id)
 		}
 	}
+
+	// 17. Verify card contributor tracking
+	t.Log("  [RUN] Alice adds card and Bob adds card, verify contributors...")
+	aliceCard2, err := c.CardClient.CreateCard(aliceCtx, &pb.CreateCardRequest{Text: "Alice's Second Secret"})
+	testutil.AssertSuccess(t, err, "Alice CreateCard 2")
+	_, err = c.DeckClient.AddCardToDeck(aliceCtx, &pb.AddCardToDeckRequest{DeckId: deck.Id, CardId: aliceCard2.Id})
+	testutil.AssertSuccess(t, err, "Alice AddCardToDeck 2")
+
+	bobCard2, err := c.CardClient.CreateCard(bobCtx, &pb.CreateCardRequest{Text: "Bob's Second Secret"})
+	testutil.AssertSuccess(t, err, "Bob CreateCard 2")
+	_, err = c.DeckClient.AddCardToDeck(bobCtx, &pb.AddCardToDeckRequest{DeckId: deck.Id, CardId: bobCard2.Id})
+	testutil.AssertSuccess(t, err, "Bob AddCardToDeck 2")
+
+	deckFinal, err := c.DeckClient.GetDeck(aliceCtx, &pb.GetDeckRequest{Id: deck.Id})
+	testutil.AssertSuccess(t, err, "GetDeck final")
+
+	if deckFinal.CardContributorIds[aliceCard2.Id] != aliceUser.Id {
+		t.Fatalf("Expected Alice (%s) to be contributor for card %s, but got %s", aliceUser.Id, aliceCard2.Id, deckFinal.CardContributorIds[aliceCard2.Id])
+	}
+	if deckFinal.CardContributorIds[bobCard2.Id] != bobUser.Id {
+		t.Fatalf("Expected Bob (%s) to be contributor for card %s, but got %s", bobUser.Id, bobCard2.Id, deckFinal.CardContributorIds[bobCard2.Id])
+	}
 }

@@ -1,13 +1,14 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { userClient, cardClient, createOptions } from '../api/client';
 import { User } from '../api/ruthless';
-import { ConfigPublic_Limits } from '../api/config';
+import { ConfigPublic_Limits, ConfigPublic_AuthProvider } from '../api/config';
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
   loading: boolean;
   isDevelopment: boolean;
+  authProvider: ConfigPublic_AuthProvider;
   limits: ConfigPublic_Limits | null;
   loginWithToken: (token: string) => void;
   completeRegistration: (name: string) => Promise<void>;
@@ -21,6 +22,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [token, setToken] = useState<string | null>(localStorage.getItem('ruthless_token'));
   const [loading, setLoading] = useState(true);
   const [isDevelopment, setIsDevelopment] = useState(false);
+  const [authProvider, setAuthProvider] = useState<ConfigPublic_AuthProvider>(ConfigPublic_AuthProvider.UNSPECIFIED);
   const [limits, setLimits] = useState<ConfigPublic_Limits | null>(null);
 
   useEffect(() => {
@@ -29,6 +31,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const response = await cardClient.getConfig({}, {});
         // GetConfig now returns ConfigPublic, so fields are directly on the response
         setIsDevelopment(response.response.isDevelopment || false);
+        setAuthProvider(response.response.authProvider);
         if (response.response.limits) {
           setLimits(response.response.limits);
         }
@@ -125,7 +128,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, isDevelopment, limits, loginWithToken, completeRegistration, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, isDevelopment, authProvider, limits, loginWithToken, completeRegistration, logout }}>
       {children}
     </AuthContext.Provider>
   );

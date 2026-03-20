@@ -104,6 +104,11 @@ export const DeckEditor: React.FC<DeckEditorProps> = ({ deckId, onBack, initialT
   const isContributor = !!(user && deck && (deck.ownerId === user.id || (deck.contributors || []).includes(user.id)));
   const isOwner = !!(user && deck && deck.ownerId === user.id);
 
+  const getContributionCount = (userId: string) => {
+    if (!deck || !deck.cardContributorIds) return 0;
+    return Object.values(deck.cardContributorIds).filter(id => id === userId).length;
+  };
+
   useEffect(() => {
     if (isContributor) {
       fetchAvailableCards();
@@ -271,7 +276,7 @@ export const DeckEditor: React.FC<DeckEditorProps> = ({ deckId, onBack, initialT
                     <p className="font-bold leading-tight pr-4 text-sm">{card.text}</p>
                     {isContributor && (
                       <div 
-                        className="text-gray-400 group-hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0"
+                        className="h-9 w-9 flex items-center justify-center text-gray-400 group-hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0"
                         title="Remove from deck"
                       >
                         <Trash2 size={16} />
@@ -362,16 +367,18 @@ export const DeckEditor: React.FC<DeckEditorProps> = ({ deckId, onBack, initialT
                     <p className="font-bold leading-tight pr-4 text-sm">{card.text}</p>
                     {isContributor && !isInDeck && (
                       <div 
-                        className="bg-primary/10 group-hover:bg-primary text-primary group-hover:text-background p-2 rounded-lg transition-colors flex-shrink-0"
+                        className="h-9 w-9 flex items-center justify-center bg-primary/10 group-hover:bg-primary text-primary group-hover:text-background rounded-lg transition-colors flex-shrink-0"
                         title="Add to deck"
                       >
                         <Plus size={16} />
                       </div>
                     )}
                     {isInDeck && (
-                      <span className="text-xs font-black tracking-widest uppercase text-gray-500 flex-shrink-0">
-                        Added
-                      </span>
+                      <div className="h-9 flex items-center justify-center flex-shrink-0">
+                        <span className="text-xs font-black tracking-widest uppercase text-gray-500">
+                          Added
+                        </span>
+                      </div>
                     )}
                   </div>
                 );
@@ -418,7 +425,9 @@ export const DeckEditor: React.FC<DeckEditorProps> = ({ deckId, onBack, initialT
                       {deck.ownerPlayer.name}
                       {deck.ownerPlayer.identifier && <span className="text-primary/60 italic ml-1">#{deck.ownerPlayer.identifier}</span>}
                    </span>
-                   <span className="text-[10px] font-black bg-primary text-background px-2 py-0.5 rounded-md tracking-tighter uppercase">Original Creator</span>
+                   <span className="text-[10px] font-black bg-primary text-background px-2 py-0.5 rounded-md tracking-tighter uppercase">
+                     {getContributionCount(deck.ownerPlayer.id)} Cards • Original Creator
+                   </span>
                  </div>
               )}
             </div>
@@ -430,10 +439,15 @@ export const DeckEditor: React.FC<DeckEditorProps> = ({ deckId, onBack, initialT
                 {deck.contributorPlayers && deck.contributorPlayers.length > 0 ? (
                   deck.contributorPlayers.map(p => (
                     <div key={p.id} className="flex justify-between items-center p-4 bg-white/5 rounded-2xl border border-white/5 group">
-                      <span className="font-bold text-gray-300 tracking-tight">
-                         {p.name}
-                         {p.identifier && <span className="text-gray-600 italic ml-1">#{p.identifier}</span>}
-                      </span>
+                      <div className="flex flex-col">
+                        <span className="font-bold text-gray-300 tracking-tight">
+                           {p.name}
+                           {p.identifier && <span className="text-gray-600 italic ml-1">#{p.identifier}</span>}
+                        </span>
+                        <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest mt-1">
+                          {getContributionCount(p.id)} Cards
+                        </span>
+                      </div>
                       {isOwner && (
                         <button 
                           onClick={() => p.identifier && handleRemoveContributor(p.identifier)} 

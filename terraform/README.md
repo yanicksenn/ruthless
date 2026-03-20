@@ -1,7 +1,7 @@
 # Ruthless Terraform Deployment
 
-This directory contains the Terraform configuration for deploying the Ruthless application to Google Cloud Platform. 
-It uses a modular architecture with separate state for `preprod` and `prod` environments.
+This directory contains the Terraform configuration for deploying the Ruthless application to Google Cloud Platform (GCP). 
+It uses a modular architecture with separate state management for `preprod` and `prod` environments.
 
 ## Architecture
 
