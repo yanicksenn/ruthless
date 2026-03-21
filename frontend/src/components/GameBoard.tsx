@@ -439,7 +439,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({ sessionId, onBack, onLeave
       <InviteFriendDialog
         isOpen={isInviteModalOpen}
         onClose={() => setIsInviteModalOpen(false)}
-        onInvite={handleInvite}
+        onAction={handleInvite}
         excludeFromSessionId={sessionId}
       />
     </div>

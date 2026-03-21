@@ -1082,7 +1082,7 @@ func (s *Storage) DeleteFriendship(ctx context.Context, userID, friendID string)
 	return tx.Commit()
 }
 
-func (s *Storage) ListFriends(ctx context.Context, userID string, excludeSessionID string, filter string, pageSize, pageNumber int32) ([]*pb.Player, int32, error) {
+func (s *Storage) ListFriends(ctx context.Context, userID string, excludeSessionID string, excludeDeckID string, filter string, pageSize, pageNumber int32) ([]*pb.Player, int32, error) {
 	var totalCount int32
 	countQuery := "SELECT COUNT(*) FROM friendships f JOIN users u ON f.friend_id = u.id WHERE f.user_id = $1"
 	var countArgs []interface{}
@@ -1097,6 +1097,16 @@ func (s *Storage) ListFriends(ctx context.Context, userID string, excludeSession
 			SELECT receiver_id FROM session_invitations WHERE session_id = $` + strconv.Itoa(countArgCount) + `
 		)`
 		countArgs = append(countArgs, excludeSessionID)
+	}
+	
+	if excludeDeckID != "" {
+		countArgCount++
+		countQuery += ` AND u.id NOT IN (
+			SELECT user_id FROM deck_contributors WHERE deck_id = $` + strconv.Itoa(countArgCount) + `
+			UNION
+			SELECT owner_id FROM decks WHERE id = $` + strconv.Itoa(countArgCount) + `
+		)`
+		countArgs = append(countArgs, excludeDeckID)
 	}
 
 	if filter != "" {
@@ -1129,6 +1139,16 @@ func (s *Storage) ListFriends(ctx context.Context, userID string, excludeSession
 			SELECT receiver_id FROM session_invitations WHERE session_id = $` + strconv.Itoa(argCount) + `
 		)`
 		args = append(args, excludeSessionID)
+	}
+
+	if excludeDeckID != "" {
+		argCount++
+		query += ` AND u.id NOT IN (
+			SELECT user_id FROM deck_contributors WHERE deck_id = $` + strconv.Itoa(argCount) + `
+			UNION
+			SELECT owner_id FROM decks WHERE id = $` + strconv.Itoa(argCount) + `
+		)`
+		args = append(args, excludeDeckID)
 	}
 
 	if filter != "" {

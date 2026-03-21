@@ -888,6 +888,10 @@ export interface ListFriendsRequest {
      * @generated from protobuf field: optional string filter = 4
      */
     filter?: string;
+    /**
+     * @generated from protobuf field: optional string exclude_from_deck_id = 5
+     */
+    excludeFromDeckId?: string;
 }
 /**
  * @generated from protobuf message ruthless.v1.ListFriendsResponse
@@ -4681,7 +4685,8 @@ class ListFriendsRequest$Type extends MessageType<ListFriendsRequest> {
             { no: 1, name: "page_size", kind: "scalar", T: 5 /*ScalarType.INT32*/ },
             { no: 2, name: "page_number", kind: "scalar", T: 5 /*ScalarType.INT32*/ },
             { no: 3, name: "exclude_from_session_id", kind: "scalar", opt: true, T: 9 /*ScalarType.STRING*/ },
-            { no: 4, name: "filter", kind: "scalar", opt: true, T: 9 /*ScalarType.STRING*/ }
+            { no: 4, name: "filter", kind: "scalar", opt: true, T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "exclude_from_deck_id", kind: "scalar", opt: true, T: 9 /*ScalarType.STRING*/ }
         ]);
     }
     create(value?: PartialMessage<ListFriendsRequest>): ListFriendsRequest {
@@ -4709,6 +4714,9 @@ class ListFriendsRequest$Type extends MessageType<ListFriendsRequest> {
                 case /* optional string filter */ 4:
                     message.filter = reader.string();
                     break;
+                case /* optional string exclude_from_deck_id */ 5:
+                    message.excludeFromDeckId = reader.string();
+                    break;
                 default:
                     let u = options.readUnknownField;
                     if (u === "throw")
@@ -4733,6 +4741,9 @@ class ListFriendsRequest$Type extends MessageType<ListFriendsRequest> {
         /* optional string filter = 4; */
         if (message.filter !== undefined)
             writer.tag(4, WireType.LengthDelimited).string(message.filter);
+        /* optional string exclude_from_deck_id = 5; */
+        if (message.excludeFromDeckId !== undefined)
+            writer.tag(5, WireType.LengthDelimited).string(message.excludeFromDeckId);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);

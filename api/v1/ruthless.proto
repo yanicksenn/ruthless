@@ -393,6 +393,7 @@ message ListFriendsRequest {
   int32 page_number = 2;
   optional string exclude_from_session_id = 3;
   optional string filter = 4;
+  optional string exclude_from_deck_id = 5;
 }
 message ListFriendsResponse {
   repeated Player friends = 1;

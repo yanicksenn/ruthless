@@ -646,7 +646,7 @@ func (s *Storage) DeleteFriendship(ctx context.Context, userID, friendID string)
 	return nil
 }
 
-func (s *Storage) ListFriends(ctx context.Context, userID string, excludeSessionID string, filter string, pageSize, pageNumber int32) ([]*pb.Player, int32, error) {
+func (s *Storage) ListFriends(ctx context.Context, userID string, excludeSessionID string, excludeDeckID string, filter string, pageSize, pageNumber int32) ([]*pb.Player, int32, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -679,6 +679,25 @@ func (s *Storage) ListFriends(ctx context.Context, userID string, excludeSession
 				}
 			}
 			if inSession {
+				continue
+			}
+		}
+
+		if excludeDeckID != "" {
+			inDeck := false
+			if deck, ok := s.decks[excludeDeckID]; ok {
+				if deck.OwnerId == fID {
+					inDeck = true
+				} else {
+					for _, cid := range deck.Contributors {
+						if cid == fID {
+							inDeck = true
+							break
+						}
+					}
+				}
+			}
+			if inDeck {
 				continue
 			}
 		}

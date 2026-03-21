@@ -92,8 +92,9 @@ func (s *Server) ListFriends(ctx context.Context, req *pb.ListFriendsRequest) (*
 	}
 
 	excludeSessionID := req.GetExcludeFromSessionId()
+	excludeDeckID := req.GetExcludeFromDeckId()
 	filter := req.GetFilter()
-	friends, totalCount, err := s.store.ListFriends(ctx, player.Id, excludeSessionID, filter, req.PageSize, req.PageNumber)
+	friends, totalCount, err := s.store.ListFriends(ctx, player.Id, excludeSessionID, excludeDeckID, filter, req.PageSize, req.PageNumber)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to list friends: %v", err)
 	}

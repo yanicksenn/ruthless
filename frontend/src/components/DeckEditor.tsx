@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Plus, Trash2, ArrowLeft, Search } from 'lucide-react';
+import { Plus, Trash2, ArrowLeft, Search, UserPlus, Users } from 'lucide-react';
 import { cardClient, deckClient, createOptions } from '../api/client';
 import { Card, Deck, CardColor } from '../api/ruthless';
+import { InviteFriendDialog } from './InviteFriendDialog';
 
 interface DeckEditorProps {
   deckId: string;
@@ -31,11 +32,11 @@ export const DeckEditor: React.FC<DeckEditorProps> = ({ deckId, onBack, initialT
   const pageSize = 12;
 
   const [activeTab, setActiveTab] = useState(initialTab);
-  const [contributorInput, setContributorInput] = useState('');
+  const [isAddContributorModalOpen, setIsAddContributorModalOpen] = useState(false);
 
   // Sync tab with URL
   useEffect(() => {
-    const newPath = `/decks/${deckId}/${activeTab}`;
+    const newPath = `/library/decks/${deckId}/${activeTab}`;
     if (window.location.pathname !== newPath) {
       window.history.pushState(null, '', newPath);
     }
@@ -144,12 +145,10 @@ export const DeckEditor: React.FC<DeckEditorProps> = ({ deckId, onBack, initialT
     }
   };
 
-  const handleAddContributor = async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    if (!contributorInput.trim()) return;
+  const handleAddContributor = async (identifier: string) => {
     try {
-      await deckClient.addContributor({ deckId, identifier: contributorInput.trim() }, createOptions(token));
-      setContributorInput('');
+      await deckClient.addContributor({ deckId, identifier }, createOptions(token));
+      setIsAddContributorModalOpen(false);
       fetchDeckDetails();
     } catch (err: any) {
       alert(`Failed to add contributor: ${err.message || err}`);
@@ -410,9 +409,18 @@ export const DeckEditor: React.FC<DeckEditorProps> = ({ deckId, onBack, initialT
       ) : (
         /* Contributors Tab */
         <div className="max-w-2xl mx-auto glass p-8 rounded-[2.5rem] border border-white/5 shadow-2xl">
-          <div className="mb-8">
-            <h2 className="text-2xl font-black text-white tracking-tight">Collaborators</h2>
-            <p className="text-gray-500 text-xs font-bold uppercase tracking-widest">Who has access to edit this deck</p>
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-bold text-white uppercase tracking-widest flex items-center gap-2">
+              <Users size={18} className="text-primary" /> Card Contributors
+            </h2>
+            {isOwner && (
+              <button
+                onClick={() => setIsAddContributorModalOpen(true)}
+                className="bg-primary hover:bg-primary/80 text-background font-black px-4 py-2 rounded-xl flex items-center gap-2 transition-all transform hover:scale-105 shadow-sm shadow-primary/20 uppercase tracking-widest text-xs"
+              >
+                <UserPlus size={16} /> Add Contributor
+              </button>
+            )}
           </div>
 
           <div className="space-y-6">
@@ -467,35 +475,23 @@ export const DeckEditor: React.FC<DeckEditorProps> = ({ deckId, onBack, initialT
               </div>
             </div>
 
-            {/* Add Contributor Form (Owner Only) */}
             {isOwner && (
-              <div className="pt-6 border-t border-white/10">
-                <h3 className="text-xs font-black text-gray-500 uppercase tracking-widest mb-3">Add New Contributor</h3>
-                <form onSubmit={handleAddContributor} className="flex gap-2 relative">
-                  <input 
-                    type="text" 
-                    value={contributorInput}
-                    onChange={e => setContributorInput(e.target.value)}
-                    placeholder="UserIdentifier#1234"
-                    className="flex-1 bg-white/5 border border-white/10 rounded-2xl py-3 pl-5 pr-12 text-sm font-medium text-white placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all"
-                  />
-                  <button 
-                    type="submit" 
-                    disabled={!contributorInput.trim()}
-                    className="absolute right-1.5 top-1.5 bottom-1.5 aspect-square bg-primary hover:bg-primary/80 disabled:bg-primary/20 disabled:text-background/50 text-background flex items-center justify-center rounded-xl transition-colors"
-                    title="Add user"
-                  >
-                    <Plus size={20} />
-                  </button>
-                </form>
-                <p className="mt-2 text-[10px] text-gray-600 font-bold uppercase tracking-widest">
-                  Invite others using their unique name and identifier.
-                </p>
-              </div>
+              <p className="mt-2 text-[10px] text-gray-600 font-bold uppercase tracking-widest">
+                Invite others using their unique name and identifier.
+              </p>
             )}
           </div>
         </div>
       )}
+
+      <InviteFriendDialog
+        isOpen={isAddContributorModalOpen}
+        onClose={() => setIsAddContributorModalOpen(false)}
+        onAction={handleAddContributor}
+        excludeFromDeckId={deckId}
+        title="Add Contributor"
+        buttonText="Add"
+      />
     </div>
   );
 };

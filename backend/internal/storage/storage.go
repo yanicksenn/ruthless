@@ -71,7 +71,7 @@ type Storage interface {
 	ListInvitations(ctx context.Context, receiverID string, pageSize, pageNumber int32) ([]*pb.FriendInvitation, int32, error)
 	CreateFriendship(ctx context.Context, userID, friendID string) error
 	DeleteFriendship(ctx context.Context, userID, friendID string) error
-	ListFriends(ctx context.Context, userID string, excludeSessionID string, filter string, pageSize, pageNumber int32) ([]*pb.Player, int32, error)
+	ListFriends(ctx context.Context, userID string, excludeSessionID string, excludeDeckID string, filter string, pageSize, pageNumber int32) ([]*pb.Player, int32, error)
 
 	// Notification operations
 	IncrementNotificationCounter(ctx context.Context, userID string, notificationType pb.NotificationType) error

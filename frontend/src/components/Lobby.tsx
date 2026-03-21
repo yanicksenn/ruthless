@@ -9,10 +9,9 @@ type Tab = 'public' | 'active' | 'invitations';
 
 interface LobbyProps {
   onJoinSession: (sessionId: string) => void;
-  activeSessionId: string | null;
 }
 
-export const Lobby: React.FC<LobbyProps> = ({ onJoinSession, activeSessionId }) => {
+export const Lobby: React.FC<LobbyProps> = ({ onJoinSession }) => {
   const { token, user, logout, limits } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('public');
   
@@ -121,10 +120,6 @@ export const Lobby: React.FC<LobbyProps> = ({ onJoinSession, activeSessionId }) 
   };
 
   const handleJoinSession = async (sessionId: string) => {
-    if (sessionId === activeSessionId) {
-      onJoinSession(sessionId);
-      return;
-    }
     try {
       await sessionClient.joinSession({ 
         sessionId,
@@ -164,13 +159,11 @@ export const Lobby: React.FC<LobbyProps> = ({ onJoinSession, activeSessionId }) 
   const renderSessionCard = (session: Session) => (
     <div
       key={session.id}
-      className={`glass p-6 rounded-2xl transition-all cursor-pointer group ${
-        session.id === activeSessionId ? 'border-secondary/50 ring-1 ring-secondary/20 shadow-lg shadow-secondary/5' : 'hover:border-primary/50'
-      }`}
+      className="glass p-6 rounded-2xl transition-all cursor-pointer group hover:border-primary/50"
       onClick={() => handleJoinSession(session.id)}
     >
       <div className="flex justify-between items-start mb-4">
-        <div className={`flex items-center gap-2 ${session.id === activeSessionId ? 'text-secondary' : 'text-primary'}`}>
+        <div className="flex items-center gap-2 text-primary">
           <Hash size={16} />
           <span className="font-mono text-sm">{session.id.substring(0, 8)}</span>
         </div>
@@ -179,9 +172,7 @@ export const Lobby: React.FC<LobbyProps> = ({ onJoinSession, activeSessionId }) 
           {session.playerIds.length} PLAYERS
         </div>
       </div>
-      <h3 className={`text-xl font-bold mb-6 transition-colors ${
-        session.id === activeSessionId ? 'text-secondary' : 'group-hover:text-primary'
-      }`}>
+      <h3 className="text-xl font-bold mb-6 transition-colors group-hover:text-primary text-white">
         {session.name}
       </h3>
       <div className="flex justify-between items-center">
@@ -197,11 +188,9 @@ export const Lobby: React.FC<LobbyProps> = ({ onJoinSession, activeSessionId }) 
              </div>
            )}
         </div>
-        <button className={`text-xs font-black uppercase transition-colors flex items-center gap-1 ${
-          session.id === activeSessionId ? 'text-secondary' : 'text-gray-400 group-hover:text-white'
-        }`}>
-          {session.id === activeSessionId ? 'RESUME ROOM' : 'JOIN ROOM'} <Play size={12} fill="currentColor" />
-        </button>
+        <div className="text-xs font-black uppercase transition-colors flex items-center gap-1 text-gray-400 group-hover:text-white">
+          JOIN ROOM <Play size={12} fill="currentColor" />
+        </div>
       </div>
     </div>
   );

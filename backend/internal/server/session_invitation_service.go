@@ -59,7 +59,7 @@ func (s *Server) InviteFriendToSession(ctx context.Context, req *pb.InviteFriend
 	}
 
 	// Make sure they are actually friends
-	friends, _, err := s.store.ListFriends(ctx, player.Id, "", "", 0, 1) // Using page size 0 means fetch all, but wait, we need to check if target is in friend list.
+	friends, _, err := s.store.ListFriends(ctx, player.Id, "", "", "", 0, 1) // Using page size 0 means fetch all, but wait, we need to check if target is in friend list.
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to load friends: %v", err)
 	}

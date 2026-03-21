@@ -21,13 +21,17 @@ function App() {
       const id = path.split('/')[2];
       return { view: 'game' as ViewState, sessionId: id, deckId: null, activeTab: null };
     }
+    if (path.startsWith('/library/decks/')) {
+      const parts = path.split('/');
+      // /library/decks/:id/:tab
+      if (parts[3] && parts[3] !== 'cards' && parts[3] !== 'decks') {
+         return { view: 'library' as ViewState, sessionId: null, deckId: parts[3], activeTab: parts[4] || 'cards' };
+      }
+    }
     if (path.startsWith('/decks/')) {
       const parts = path.split('/');
       if (parts[3] === 'subscribe') {
         return { view: 'deck_subscribe' as ViewState, sessionId: null, deckId: parts[2], activeTab: null };
-      }
-      if (parts[2]) {
-        return { view: 'decks' as ViewState, sessionId: null, deckId: parts[2], activeTab: parts[3] || 'cards' };
       }
     }
     if (path.startsWith('/library/')) {
@@ -96,8 +100,12 @@ function App() {
       newPath = `/game/${sessionId}`;
     } else if (newView === 'deck_subscribe') {
       newPath = `/decks/${deckId}/subscribe`;
-    } else if (newView === 'library' && !deckId) {
-      newPath = `/library/${tab || 'decks'}`;
+    } else if (newView === 'library') {
+      if (deckId) {
+        newPath = `/library/decks/${deckId}/${tab || 'cards'}`;
+      } else {
+        newPath = `/library/${tab || 'decks'}`;
+      }
     } else if (newView === 'friends') {
       newPath = `/friends/${tab || 'list'}`;
     } else {
@@ -221,7 +229,6 @@ function App() {
         {view === 'sessions' ? (
           <Lobby 
             onJoinSession={handleJoinSession} 
-            activeSessionId={activeSessionId}
           />
         ) : view === 'game' && activeSessionId ? (
           <GameBoard 
@@ -244,7 +251,6 @@ function App() {
           /* Fallback if somehow in game view without active session */
           <Lobby 
             onJoinSession={handleJoinSession} 
-            activeSessionId={activeSessionId}
           />
         )}
       </div>
