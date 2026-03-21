@@ -113,42 +113,7 @@ export const Cards: React.FC = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-4 py-12">
-      <header className="flex justify-between items-start mb-12">
-        <div>
-          <h1 className="text-5xl font-black tracking-tighter text-white">CARDS</h1>
-          <p className="text-gray-400 font-bold uppercase tracking-widest text-sm">
-            Manage your authored content
-          </p>
-          {user && (
-            <div className="mt-4 flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs font-bold ring-1 ring-primary/30">
-                {user.name.slice(0, 2).toUpperCase()}
-              </div>
-              <span className="text-gray-300 font-bold text-sm tracking-tight">
-                {user.name}
-                {user.identifier && <span className="text-gray-500 italic">#{user.identifier}</span>}
-              </span>
-            </div>
-          )}
-        </div>
-        <div className="flex gap-3">
-          <button
-            onClick={handleOpenCardDialog}
-            className="bg-secondary hover:bg-secondary/80 text-black font-black px-6 py-3 rounded-2xl flex items-center gap-2 transition-all transform hover:scale-105 shadow-lg shadow-secondary/10"
-          >
-            <Plus size={20} />
-            NEW CARD
-          </button>
-          <button
-            onClick={logout}
-            className="p-3 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-2xl transition-all ring-1 ring-white/5"
-            title="Logout"
-          >
-            <LogOut size={20} />
-          </button>
-        </div>
-      </header>
+    <>
 
       <div className="glass p-8 rounded-[2.5rem] min-h-[500px] border border-white/5 shadow-2xl relative overflow-hidden">
         {loading && (
@@ -158,65 +123,72 @@ export const Cards: React.FC = () => {
         )}
 
         <div className="space-y-8">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div className="flex justify-between items-start">
             <div>
               <h2 className="text-3xl font-black text-white tracking-tight">Authored Content</h2>
               <p className="text-gray-500 text-sm font-bold uppercase tracking-widest">The results of your dark imagination</p>
             </div>
+            <button
+              onClick={handleOpenCardDialog}
+              className="bg-secondary hover:bg-secondary/80 text-black font-black px-6 py-3 rounded-2xl flex items-center gap-2 transition-all transform hover:scale-105 shadow-lg shadow-secondary/10"
+            >
+              <Plus size={20} />
+              NEW CARD
+            </button>
+          </div>
 
-            <div className="flex flex-wrap items-center gap-4">
-              {/* Search Filter */}
-              <div className="relative group/search min-w-[240px]">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-hover/search:text-primary transition-colors" size={18} />
-                <input
-                  type="text"
-                  placeholder="Filter cards..."
-                  value={filter}
-                  onChange={(e) => setFilter(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-4 text-white font-medium placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all"
-                />
-              </div>
-
-              {/* Sort Field */}
-              <div className="relative group/sort min-w-[180px]">
-                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" size={16} />
-                <select
-                  value={sortField}
-                  onChange={(e) => setSortField(Number(e.target.value))}
-                  className="w-full appearance-none bg-white/5 border border-white/10 rounded-2xl py-3 pl-5 pr-12 text-white font-bold text-sm tracking-tight focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer hover:bg-white/10"
-                >
-                  <option value={CardOrderField.CREATED_AT} className="bg-background">Date Created</option>
-                  <option value={CardOrderField.TEXT} className="bg-background">Card Text</option>
-                </select>
-              </div>
-              
-              {/* Type Filter */}
-              <div className="relative group/type min-w-[180px]">
-                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" size={16} />
-                <select
-                  value={colorFilter}
-                  onChange={(e) => setColorFilter(Number(e.target.value))}
-                  className="w-full appearance-none bg-white/5 border border-white/10 rounded-2xl py-3 pl-5 pr-12 text-white font-bold text-sm tracking-tight focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer hover:bg-white/10"
-                >
-                  <option value={CardColor.UNSPECIFIED} className="bg-background">All Types</option>
-                  <option value={CardColor.WHITE} className="bg-background">White Cards only</option>
-                  <option value={CardColor.BLACK} className="bg-background">Black Cards only</option>
-                </select>
-              </div>
-
-              {/* Direction Toggle */}
-              <button
-                onClick={() => setDescending(!descending)}
-                className={`p-3 rounded-2xl transition-all flex items-center gap-2 font-bold text-xs tracking-widest border ${
-                  descending 
-                    ? 'bg-primary/20 border-primary/30 text-primary' 
-                    : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'
-                }`}
-              >
-                <ArrowUpDown size={18} />
-                {descending ? 'DESC' : 'ASC'}
-              </button>
+          <div className="flex flex-wrap items-center gap-4">
+            {/* Search Filter */}
+            <div className="relative group/search min-w-[240px]">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-hover/search:text-primary transition-colors" size={18} />
+              <input
+                type="text"
+                placeholder="Filter cards..."
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-4 text-white font-medium placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all"
+              />
             </div>
+
+            {/* Sort Field */}
+            <div className="relative group/sort min-w-[180px]">
+              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" size={16} />
+              <select
+                value={sortField}
+                onChange={(e) => setSortField(Number(e.target.value))}
+                className="w-full appearance-none bg-white/5 border border-white/10 rounded-2xl py-3 pl-5 pr-12 text-white font-bold text-sm tracking-tight focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer hover:bg-white/10"
+              >
+                <option value={CardOrderField.CREATED_AT} className="bg-background">Date Created</option>
+                <option value={CardOrderField.TEXT} className="bg-background">Card Text</option>
+              </select>
+            </div>
+            
+            {/* Type Filter */}
+            <div className="relative group/type min-w-[180px]">
+              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" size={16} />
+              <select
+                value={colorFilter}
+                onChange={(e) => setColorFilter(Number(e.target.value))}
+                className="w-full appearance-none bg-white/5 border border-white/10 rounded-2xl py-3 pl-5 pr-12 text-white font-bold text-sm tracking-tight focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer hover:bg-white/10"
+              >
+                <option value={CardColor.UNSPECIFIED} className="bg-background">All Types</option>
+                <option value={CardColor.WHITE} className="bg-background">White Cards only</option>
+                <option value={CardColor.BLACK} className="bg-background">Black Cards only</option>
+              </select>
+            </div>
+
+            {/* Direction Toggle */}
+            <button
+              onClick={() => setDescending(!descending)}
+              className={`p-3 rounded-2xl transition-all flex items-center gap-2 font-bold text-xs tracking-widest border ${
+                descending 
+                  ? 'bg-primary/20 border-primary/30 text-primary' 
+                  : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'
+              }`}
+            >
+              <ArrowUpDown size={18} />
+              {descending ? 'DESC' : 'ASC'}
+            </button>
           </div>
 
           {cards.length > 0 ? (
@@ -357,6 +329,6 @@ export const Cards: React.FC = () => {
         maxLength={limits?.maxCardTextLength}
         initialValue={editingCard?.text}
       />
-    </div>
+    </>
   );
 };

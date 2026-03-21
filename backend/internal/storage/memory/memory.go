@@ -20,6 +20,9 @@ type Storage struct {
 	decks    map[string]*pb.Deck
 	games    map[string]*pb.Game
 	revokedTokens map[string]time.Time
+	invitations   map[string]*pb.FriendInvitation
+	friendships   map[string]map[string]time.Time // userID -> friendID -> createdAt
+	notifications map[string]map[pb.NotificationType]int32 // userID -> type -> count
 }
 
 func New() *Storage {
@@ -30,6 +33,9 @@ func New() *Storage {
 		decks:    make(map[string]*pb.Deck),
 		games:    make(map[string]*pb.Game),
 		revokedTokens: make(map[string]time.Time),
+		invitations:   make(map[string]*pb.FriendInvitation),
+		friendships:   make(map[string]map[string]time.Time),
+		notifications: make(map[string]map[pb.NotificationType]int32),
 	}
 }
 
@@ -87,11 +93,11 @@ func (s *Storage) GetUser(ctx context.Context, id string) (*pb.User, error) {
 	return user, nil
 }
 
-func (s *Storage) GetUserByIdentifier(ctx context.Context, identifier string) (*pb.User, error) {
+func (s *Storage) GetUserByNameAndIdentifier(ctx context.Context, name, identifier string) (*pb.User, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	for _, user := range s.users {
-		if user.Identifier == identifier {
+		if user.Name == name && user.Identifier == identifier {
 			if user.Identifier == "" {
 				user.PendingCompletion = true
 			} else {
@@ -101,6 +107,17 @@ func (s *Storage) GetUserByIdentifier(ctx context.Context, identifier string) (*
 		}
 	}
 	return nil, storage.ErrNotFound
+}
+
+func (s *Storage) UpdateUserLastActive(ctx context.Context, id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	user, ok := s.users[id]
+	if !ok {
+		return storage.ErrNotFound
+	}
+	user.LastActiveAt = timestamppb.Now()
+	return nil
 }
 
 // -- Token Methods
@@ -505,6 +522,209 @@ func (s *Storage) CountSessionsByOwner(ctx context.Context, ownerID string) (int
 		}
 	}
 	return count, nil
+}
+
+func (s *Storage) CreateInvitation(ctx context.Context, senderID, receiverID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for _, inv := range s.invitations {
+		if inv.Sender.Id == senderID && inv.Receiver.Id == receiverID {
+			return storage.ErrAlreadyExists
+		}
+	}
+
+	sender, ok := s.users[senderID]
+	if !ok {
+		return storage.ErrNotFound
+	}
+	receiver, ok := s.users[receiverID]
+	if !ok {
+		return storage.ErrNotFound
+	}
+
+	id := time.Now().Format(time.RFC3339Nano) // Simple ID for memory storage
+	invitation := &pb.FriendInvitation{
+		Id: id,
+		Sender: &pb.Player{
+			Id:         sender.Id,
+			Name:       sender.Name,
+			Identifier: sender.Identifier,
+		},
+		Receiver: &pb.Player{
+			Id:         receiver.Id,
+			Name:       receiver.Name,
+			Identifier: receiver.Identifier,
+		},
+		CreatedAt: timestamppb.Now(),
+	}
+	s.invitations[id] = invitation
+	return nil
+}
+
+func (s *Storage) GetInvitation(ctx context.Context, id string) (*pb.FriendInvitation, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	inv, ok := s.invitations[id]
+	if !ok {
+		return nil, storage.ErrNotFound
+	}
+	return inv, nil
+}
+
+func (s *Storage) DeleteInvitation(ctx context.Context, id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.invitations, id)
+	return nil
+}
+
+func (s *Storage) ListInvitations(ctx context.Context, receiverID string, pageSize, pageNumber int32) ([]*pb.FriendInvitation, int32, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var invitations []*pb.FriendInvitation
+	for _, inv := range s.invitations {
+		if inv.Receiver.Id == receiverID {
+			invitations = append(invitations, inv)
+		}
+	}
+	sort.Slice(invitations, func(i, j int) bool {
+		return invitations[i].CreatedAt.AsTime().After(invitations[j].CreatedAt.AsTime())
+	})
+
+	totalCount := int32(len(invitations))
+	if pageSize <= 0 {
+		return invitations, totalCount, nil
+	}
+
+	start := (pageNumber - 1) * pageSize
+	if start >= totalCount {
+		return []*pb.FriendInvitation{}, totalCount, nil
+	}
+
+	end := start + pageSize
+	if end > totalCount {
+		end = totalCount
+	}
+
+	return invitations[start:end], totalCount, nil
+}
+
+func (s *Storage) CreateFriendship(ctx context.Context, userID, friendID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if _, ok := s.friendships[userID]; !ok {
+		s.friendships[userID] = make(map[string]time.Time)
+	}
+	if _, ok := s.friendships[friendID]; !ok {
+		s.friendships[friendID] = make(map[string]time.Time)
+	}
+
+	if _, ok := s.friendships[userID][friendID]; ok {
+		return storage.ErrAlreadyExists
+	}
+
+	now := time.Now()
+	s.friendships[userID][friendID] = now
+	s.friendships[friendID][userID] = now
+	return nil
+}
+
+func (s *Storage) DeleteFriendship(ctx context.Context, userID, friendID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if friends, ok := s.friendships[userID]; ok {
+		delete(friends, friendID)
+	}
+	if friends, ok := s.friendships[friendID]; ok {
+		delete(friends, userID)
+	}
+	return nil
+}
+
+func (s *Storage) ListFriends(ctx context.Context, userID string, pageSize, pageNumber int32) ([]*pb.Player, int32, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	friendsMap, ok := s.friendships[userID]
+	if !ok {
+		return []*pb.Player{}, 0, nil
+	}
+
+	var friends []*pb.Player
+	for fID := range friendsMap {
+		user, ok := s.users[fID]
+		if ok {
+			friends = append(friends, &pb.Player{
+				Id:         user.Id,
+				Name:       user.Name,
+				Identifier: user.Identifier,
+			})
+		}
+	}
+
+	sort.Slice(friends, func(i, j int) bool {
+		return friends[i].Name < friends[j].Name
+	})
+
+	totalCount := int32(len(friends))
+	if pageSize <= 0 {
+		return friends, totalCount, nil
+	}
+
+	start := (pageNumber - 1) * pageSize
+	if start >= totalCount {
+		return []*pb.Player{}, totalCount, nil
+	}
+
+	end := start + pageSize
+	if end > totalCount {
+		end = totalCount
+	}
+
+	return friends[start:end], totalCount, nil
+}
+
+// -- Notification Methods
+func (s *Storage) IncrementNotificationCounter(ctx context.Context, userID string, notificationType pb.NotificationType) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	userNotifs, ok := s.notifications[userID]
+	if !ok {
+		userNotifs = make(map[pb.NotificationType]int32)
+		s.notifications[userID] = userNotifs
+	}
+	userNotifs[notificationType]++
+	return nil
+}
+
+func (s *Storage) ResetNotificationCounter(ctx context.Context, userID string, notificationType pb.NotificationType) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if userNotifs, ok := s.notifications[userID]; ok {
+		delete(userNotifs, notificationType)
+	}
+	return nil
+}
+
+func (s *Storage) GetNotifications(ctx context.Context, userID string) ([]*pb.Notification, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	var notifs []*pb.Notification
+	if userNotifs, ok := s.notifications[userID]; ok {
+		for nType, count := range userNotifs {
+			notifs = append(notifs, &pb.Notification{
+				Type:  nType,
+				Count: count,
+			})
+		}
+	}
+	return notifs, nil
 }
 
 // Ensure Storage implements storage.Storage at compile time.

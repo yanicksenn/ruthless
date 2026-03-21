@@ -92,6 +92,11 @@ func (s *Server) CreateDeck(ctx context.Context, req *pb.CreateDeckRequest) (*pb
 		return nil, status.Errorf(codes.Internal, "failed to create deck")
 	}
 
+	s.LogUsageEvent(EventDeckCreated, player.Id, map[string]interface{}{
+		"deck_id": deck.Id,
+		"name":    deck.Name,
+	})
+
 	s.populatePlayers(ctx, deck)
 	return deck, nil
 }
@@ -114,11 +119,12 @@ func (s *Server) AddContributor(ctx context.Context, req *pb.AddContributorReque
 	}
 
 	identifier := strings.TrimSpace(req.Identifier)
-	if parts := strings.Split(identifier, "#"); len(parts) > 1 {
-		identifier = parts[len(parts)-1]
+	name, ident, err := parseIdentifier(identifier)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid identifier format: %v", err)
 	}
 
-	user, err := s.store.GetUserByIdentifier(ctx, identifier)
+	user, err := s.store.GetUserByNameAndIdentifier(ctx, name, ident)
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, "user not found")
 	}
@@ -146,11 +152,12 @@ func (s *Server) RemoveContributor(ctx context.Context, req *pb.RemoveContributo
 	}
 
 	identifier := strings.TrimSpace(req.Identifier)
-	if parts := strings.Split(identifier, "#"); len(parts) > 1 {
-		identifier = parts[len(parts)-1]
+	name, ident, err := parseIdentifier(identifier)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid identifier format: %v", err)
 	}
 
-	user, err := s.store.GetUserByIdentifier(ctx, identifier)
+	user, err := s.store.GetUserByNameAndIdentifier(ctx, name, ident)
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, "user not found")
 	}

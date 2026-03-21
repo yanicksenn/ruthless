@@ -55,6 +55,9 @@ func (s *Server) CompleteRegistration(ctx context.Context, req *pb.CompleteRegis
 		err = s.store.UpdateUser(ctx, user)
 		if err == nil {
 			// Success!
+			s.LogUsageEvent(EventAccountCreated, player.Id, map[string]interface{}{
+				"name": req.Name,
+			})
 			// Return a copy to avoid in-place modification of the object in the store (e.g. for memory store)
 			return &pb.User{
 				Id:                user.Id,

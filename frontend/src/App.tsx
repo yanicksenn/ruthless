@@ -1,17 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from './context/AuthContext';
+import { notificationClient, createOptions } from './api/client';
 import { Login } from './components/Login';
 import { Lobby } from './components/Lobby';
 import { GameBoard } from './components/GameBoard';
-import { Decks } from './components/Decks';
-import { Cards } from './components/Cards';
 import { DeckSubscribe } from './components/DeckSubscribe';
-import { LayoutDashboard, Library, Layers } from 'lucide-react';
+import { Friends } from './components/Friends';
+import { LayoutDashboard, Library as LibraryIcon, Layers, Users as UsersIcon } from 'lucide-react';
+import { Library as LibraryView } from './components/Library';
 
-type ViewState = 'sessions' | 'decks' | 'cards' | 'game' | 'deck_subscribe';
+type ViewState = 'sessions' | 'library' | 'game' | 'deck_subscribe' | 'friends';
 
 function App() {
-  const { user, loading } = useAuth();
+  const { user, token, loading } = useAuth();
   
   const getInitialState = () => {
     const path = window.location.pathname;
@@ -28,8 +29,14 @@ function App() {
         return { view: 'decks' as ViewState, sessionId: null, deckId: parts[2], activeTab: parts[3] || 'cards' };
       }
     }
-    if (path === '/decks') return { view: 'decks' as ViewState, sessionId: null, deckId: null, activeTab: null };
-    if (path === '/cards') return { view: 'cards' as ViewState, sessionId: null, deckId: null, activeTab: null };
+    if (path.startsWith('/library/')) {
+      const tab = path.split('/')[2];
+      return { view: 'library' as ViewState, sessionId: null, deckId: null, activeTab: tab || 'decks' };
+    }
+    if (path === '/library') return { view: 'library' as ViewState, sessionId: null, deckId: null, activeTab: 'decks' };
+    if (path === '/decks') return { view: 'library' as ViewState, sessionId: null, deckId: null, activeTab: 'decks' };
+    if (path === '/cards') return { view: 'library' as ViewState, sessionId: null, deckId: null, activeTab: 'cards' };
+    if (path === '/friends') return { view: 'friends' as ViewState, sessionId: null, deckId: null, activeTab: null };
     return { view: 'sessions' as ViewState, sessionId: null, deckId: null, activeTab: null };
   };
 
@@ -39,6 +46,34 @@ function App() {
   const [activeDeckId, setActiveDeckId] = useState<string | null>(initial.deckId);
   const [activeTab, setActiveTab] = useState<string | null>(initial.activeTab);
   const [view, setViewState] = useState<ViewState>(initial.view);
+  const [hasNotifications, setHasNotifications] = useState(false);
+
+  const checkNotifications = async () => {
+    if (!user || user.pendingCompletion) return;
+    try {
+      const res = await notificationClient.getNotifications({}, createOptions(token));
+      const notifications = res.response.notifications || [];
+      const count = notifications.reduce((acc: any, n: any) => acc + n.count, 0);
+      const changed = (count > 0) !== hasNotifications;
+      setHasNotifications(count > 0);
+      if (changed && count > 0) {
+        window.dispatchEvent(new Event('notifications-updated'));
+      }
+    } catch (err) {
+      console.error('Failed to get notifications:', err);
+    }
+  };
+
+  useEffect(() => {
+    checkNotifications();
+    const interval = setInterval(checkNotifications, 10000);
+    const handleReset = () => setHasNotifications(false);
+    window.addEventListener('notifications-reset', handleReset);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('notifications-reset', handleReset);
+    };
+  }, [user, token]);
 
   const setView = (newView: ViewState, sessionId: string | null = null, deckId: string | null = null, tab?: string) => {
     setViewState(newView);
@@ -48,8 +83,8 @@ function App() {
       newPath = `/game/${sessionId}`;
     } else if (newView === 'deck_subscribe') {
       newPath = `/decks/${deckId}/subscribe`;
-    } else if (newView === 'decks' && deckId) {
-      newPath = `/decks/${deckId}${tab ? `/${tab}` : ''}`;
+    } else if (newView === 'library' && !deckId) {
+      newPath = `/library/${tab || 'decks'}`;
     } else {
       newPath = `/${newView === 'sessions' ? '' : newView}`;
     }
@@ -116,7 +151,11 @@ function App() {
     setActiveDeckId(id);
     const tab = id ? 'cards' : undefined;
     setActiveTab(tab || null);
-    setView('decks', null, id, tab);
+    if (id) {
+       setView('library', null, id, tab);
+    } else {
+       setView('library', null, null, 'decks');
+    }
   };
 
   return (
@@ -136,23 +175,26 @@ function App() {
           <button
             onClick={() => {
               setActiveDeckId(null);
-              setView('decks');
+              setView('library', null, null, 'decks');
             }}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all ${
-              view === 'decks' && !activeDeckId ? 'bg-primary text-background' : 'text-gray-400 hover:text-white'
+              view === 'library' ? 'bg-primary text-background' : 'text-gray-400 hover:text-white'
             }`}
           >
-            <Library size={16} />
-            DECKS
+            <LibraryIcon size={16} />
+            LIBRARY
           </button>
           <button
-            onClick={() => setView('cards')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all ${
-              view === 'cards' ? 'bg-primary text-background' : 'text-gray-400 hover:text-white'
+            onClick={() => setView('friends')}
+            className={`relative flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all ${
+              view === 'friends' ? 'bg-primary text-background' : 'text-gray-400 hover:text-white'
             }`}
           >
-            <Layers size={16} />
-            CARDS
+            <UsersIcon size={16} />
+            FRIENDS
+            {hasNotifications && (
+              <span className="w-2 h-2 bg-red-500 rounded-full inline-block" />
+            )}
           </button>
         </nav>
       )}
@@ -169,12 +211,17 @@ function App() {
             onBack={() => setView('sessions')}
             onLeave={handleLeaveSession}
           />
-        ) : view === 'decks' ? (
-          <Decks activeDeckId={activeDeckId} activeTab={activeTab} onSelectDeck={handleSelectDeck} />
-        ) : view === 'cards' ? (
-          <Cards />
+        ) : view === 'library' ? (
+          <LibraryView 
+            initialTab={activeTab as any || 'decks'} 
+            activeDeckId={activeDeckId} 
+            activeTab={activeTab} 
+            onSelectDeck={handleSelectDeck} 
+          />
         ) : view === 'deck_subscribe' && activeDeckId ? (
           <DeckSubscribe deckId={activeDeckId} />
+        ) : view === 'friends' ? (
+          <Friends />
         ) : (
           /* Fallback if somehow in game view without active session */
           <Lobby 

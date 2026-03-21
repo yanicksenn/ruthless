@@ -16,7 +16,8 @@ func Load(path string) (*ruthlespb.Config, error) {
 	}
 
 	cfg := &ruthlespb.Config{}
-	if err := prototext.Unmarshal(data, cfg); err != nil {
+	opts := prototext.UnmarshalOptions{DiscardUnknown: true}
+	if err := opts.Unmarshal(data, cfg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal textproto: %w", err)
 	}
 

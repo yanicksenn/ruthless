@@ -17,6 +17,7 @@ go_test(
     srcs = ["memory_test.go"],
     deps = [
         ":memory",
+        "//api/v1:ruthlespb_go_proto",
         "//backend/internal/domain",
         "//backend/internal/storage",
     ],

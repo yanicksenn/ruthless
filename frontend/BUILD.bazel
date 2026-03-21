@@ -1,14 +1,17 @@
-load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 load("@rules_oci//oci:defs.bzl", "oci_image", "oci_load", "oci_push")
+load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 
 genrule(
     name = "build_dist",
-    srcs = glob(["**/*"], exclude=[
-        "node_modules/**", 
-        "dist/**", 
-        "BUILD.bazel",
-        ".eslintcache"
-    ]),
+    srcs = glob(
+        ["**/*"],
+        exclude = [
+            "node_modules/**",
+            "dist/**",
+            "BUILD.bazel",
+            ".eslintcache",
+        ],
+    ),
     outs = ["dist.tar"],
     cmd = """
         # Copy sources to a temp dir to build

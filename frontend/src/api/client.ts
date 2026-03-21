@@ -1,5 +1,5 @@
 import { GrpcWebFetchTransport } from "@protobuf-ts/grpcweb-transport";
-import { CardServiceClient, DeckServiceClient, SessionServiceClient, GameServiceClient, UserServiceClient } from "./ruthless.client";
+import { CardServiceClient, DeckServiceClient, SessionServiceClient, GameServiceClient, UserServiceClient, FriendServiceClient, NotificationServiceClient } from "./ruthless.client";
 import type { RpcOptions } from "@protobuf-ts/runtime-rpc";
 
 const transport = new GrpcWebFetchTransport({
@@ -20,5 +20,7 @@ export const deckClient = new DeckServiceClient(transport);
 export const sessionClient = new SessionServiceClient(transport);
 export const gameClient = new GameServiceClient(transport);
 export const userClient = new UserServiceClient(transport);
+export const friendClient = new FriendServiceClient(transport);
+export const notificationClient = new NotificationServiceClient(transport);
 
 export { createOptions };

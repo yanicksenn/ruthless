@@ -32,16 +32,15 @@ message ConfigPublic {
     uint32 max_unique_identifier_recreations = 1;
     string google_client_id = 2;
   }
-  enum AuthProvider {
-    AUTH_PROVIDER_UNSPECIFIED = 0;
-    AUTH_PROVIDER_GOOGLE = 1;
-    AUTH_PROVIDER_FAKE = 2;
-  }
   Limits limits = 1;
   Game game = 2;
   Registration registration = 3;
-  bool is_development = 4;
-  AuthProvider auth_provider = 5;
+}
+
+enum AuthProvider {
+  AUTH_PROVIDER_UNSPECIFIED = 0;
+  AUTH_PROVIDER_GOOGLE = 1;
+  AUTH_PROVIDER_FAKE = 2;
 }
 
 message ConfigPrivate {

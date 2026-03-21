@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"google.golang.org/grpc/codes"
@@ -38,7 +39,7 @@ func runDeckTests(t *testing.T, ctx context.Context, c *testutil.TestClient, run
 	t.Logf("  [RUN] Unregistered User (%s) creates card...", charlieName)
 	charlieCtx := c.GetAuthContext(ctx, charlieName)
 	_, err = c.CardClient.CreateCard(charlieCtx, &pb.CreateCardRequest{Text: "Charlie's Ghost"})
-	testutil.AssertError(t, err, codes.Unauthenticated, "user profile not found")
+	testutil.AssertError(t, err, codes.FailedPrecondition, "registration completion required")
 
 	// 3. Alice creates a deck
 	t.Log("  [RUN] Alice creates deck...")
@@ -55,7 +56,7 @@ func runDeckTests(t *testing.T, ctx context.Context, c *testutil.TestClient, run
 
 	// 5. SUCCESS: Alice adds Bob as contributor
 	t.Log("  [RUN] Alice adds Bob as contributor...")
-	_, err = c.DeckClient.AddContributor(aliceCtx, &pb.AddContributorRequest{DeckId: deck.Id, Identifier: bobUser.Identifier})
+	_, err = c.DeckClient.AddContributor(aliceCtx, &pb.AddContributorRequest{DeckId: deck.Id, Identifier: fmt.Sprintf("%s#%s", bobUser.Name, bobUser.Identifier)})
 	testutil.AssertSuccess(t, err, "AddContributor")
 
 	// 6. SUCCESS: Bob (Now contributor) adds card
@@ -72,7 +73,7 @@ func runDeckTests(t *testing.T, ctx context.Context, c *testutil.TestClient, run
 
 	// 8. FAILURE: Contributor removes contributor (only owner)
 	t.Log("  [RUN] Bob (contributor) tries to remove Alice (owner)...")
-	_, err = c.DeckClient.RemoveContributor(bobCtx, &pb.RemoveContributorRequest{DeckId: deck.Id, Identifier: aliceUser.Identifier})
+	_, err = c.DeckClient.RemoveContributor(bobCtx, &pb.RemoveContributorRequest{DeckId: deck.Id, Identifier: fmt.Sprintf("%s#%s", aliceUser.Name, aliceUser.Identifier)})
 	testutil.AssertError(t, err, codes.PermissionDenied, "authorized")
 
 	// 9. FAILURE: Non-contributor Charlie tries to remove card

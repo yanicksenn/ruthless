@@ -35,6 +35,7 @@ message User {
   google.protobuf.Timestamp created_at = 3;
   string identifier = 4;
   bool pending_completion = 5;
+  google.protobuf.Timestamp last_active_at = 6;
 }
 
 message Deck {
@@ -102,6 +103,11 @@ message Game {
   uint32 min_required_players = 12;
 }
 
+message Env {
+  ConfigPublic config = 1;
+  AuthProvider auth_provider = 3;
+}
+
 // ----------------- Card Service -----------------
 
 enum CardOrderField {
@@ -149,7 +155,7 @@ service CardService {
   rpc CreateCard (CreateCardRequest) returns (Card);
   rpc UpdateCard (UpdateCardRequest) returns (Card);
   rpc DeleteCard (DeleteCardRequest) returns (google.protobuf.Empty);
-  rpc GetConfig (google.protobuf.Empty) returns (ConfigPublic);
+  rpc GetEnv (google.protobuf.Empty) returns (Env);
 }
 
 // ----------------- Deck Service -----------------
@@ -315,3 +321,80 @@ service GameService {
   rpc GetGameBySession (GetGameBySessionRequest) returns (Game);
 }
 
+// ----------------- Friend Service -----------------
+
+message FriendInvitation {
+  string id = 1;
+  Player sender = 2;
+  Player receiver = 3;
+  google.protobuf.Timestamp created_at = 4;
+}
+
+message InviteFriendRequest {
+  string identifier = 1; // name#uniqueid
+}
+message InviteFriendResponse {}
+
+message RespondToInvitationRequest {
+  string invitation_id = 1;
+  bool accept = 2;
+}
+message RespondToInvitationResponse {}
+
+message ListFriendsRequest {
+  int32 page_size = 1;
+  int32 page_number = 2;
+}
+message ListFriendsResponse {
+  repeated Player friends = 1;
+  int32 total_count = 2;
+}
+
+message ListInvitationsRequest {
+  int32 page_size = 1;
+  int32 page_number = 2;
+}
+message ListInvitationsResponse {
+  repeated FriendInvitation invitations = 1;
+  int32 total_count = 2;
+}
+
+message RemoveFriendRequest {
+  string friend_id = 1;
+}
+message RemoveFriendResponse {}
+
+service FriendService {
+  rpc InviteFriend (InviteFriendRequest) returns (InviteFriendResponse);
+  rpc RespondToInvitation (RespondToInvitationRequest) returns (RespondToInvitationResponse);
+  rpc ListFriends (ListFriendsRequest) returns (ListFriendsResponse);
+  rpc ListInvitations (ListInvitationsRequest) returns (ListInvitationsResponse);
+  rpc RemoveFriend (RemoveFriendRequest) returns (RemoveFriendResponse);
+}
+
+// ----------------- Notification Service -----------------
+
+enum NotificationType {
+  NOTIFICATION_TYPE_UNSPECIFIED = 0;
+  NOTIFICATION_TYPE_FRIENDS_PENDING_INVITATIONS = 1;
+}
+
+message Notification {
+  NotificationType type = 1;
+  int32 count = 2;
+}
+
+message GetNotificationsRequest {}
+message GetNotificationsResponse {
+  repeated Notification notifications = 1;
+}
+
+message ResetNotificationCounterRequest {
+  NotificationType type = 1;
+}
+message ResetNotificationCounterResponse {}
+
+service NotificationService {
+  rpc GetNotifications (GetNotificationsRequest) returns (GetNotificationsResponse);
+  rpc ResetNotificationCounter (ResetNotificationCounterRequest) returns (ResetNotificationCounterResponse);
+}

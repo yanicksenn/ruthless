@@ -92,6 +92,8 @@ func (s *Server) CreateSession(ctx context.Context, req *pb.CreateSessionRequest
 		return nil, err
 	}
 
+	s.LogUsageEvent(EventSessionCreated, player.Id, map[string]interface{}{"session_id": session.Id})
+
 	return session, nil
 }
 

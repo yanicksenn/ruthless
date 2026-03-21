@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 	pb "github.com/yanicksenn/ruthless/api/v1"
 	"github.com/yanicksenn/ruthless/backend/internal/storage"
@@ -318,11 +319,12 @@ func (s *Storage) UpdateUser(ctx context.Context, user *pb.User) error {
 }
 
 func (s *Storage) GetUser(ctx context.Context, id string) (*pb.User, error) {
-	row := s.db.QueryRowContext(ctx, "SELECT id, name, identifier, created_at FROM users WHERE id = $1", id)
+	row := s.db.QueryRowContext(ctx, "SELECT id, name, identifier, created_at, last_active_at FROM users WHERE id = $1", id)
 	var u pb.User
 	var identifier sql.NullString
 	var createdAt sql.NullTime
-	if err := row.Scan(&u.Id, &u.Name, &identifier, &createdAt); err != nil {
+	var lastActiveAt sql.NullTime
+	if err := row.Scan(&u.Id, &u.Name, &identifier, &createdAt, &lastActiveAt); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, storage.ErrNotFound
 		}
@@ -336,16 +338,20 @@ func (s *Storage) GetUser(ctx context.Context, id string) (*pb.User, error) {
 	}
 	if createdAt.Valid {
 		u.CreatedAt = timestamppb.New(createdAt.Time)
+	}
+	if lastActiveAt.Valid {
+		u.LastActiveAt = timestamppb.New(lastActiveAt.Time)
 	}
 	return &u, nil
 }
 
-func (s *Storage) GetUserByIdentifier(ctx context.Context, identifierStr string) (*pb.User, error) {
-	row := s.db.QueryRowContext(ctx, "SELECT id, name, identifier, created_at FROM users WHERE identifier = $1", identifierStr)
+func (s *Storage) GetUserByNameAndIdentifier(ctx context.Context, name, identifierStr string) (*pb.User, error) {
+	row := s.db.QueryRowContext(ctx, "SELECT id, name, identifier, created_at, last_active_at FROM users WHERE name = $1 AND identifier = $2", name, identifierStr)
 	var u pb.User
 	var identifier sql.NullString
 	var createdAt sql.NullTime
-	if err := row.Scan(&u.Id, &u.Name, &identifier, &createdAt); err != nil {
+	var lastActiveAt sql.NullTime
+	if err := row.Scan(&u.Id, &u.Name, &identifier, &createdAt, &lastActiveAt); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, storage.ErrNotFound
 		}
@@ -360,7 +366,15 @@ func (s *Storage) GetUserByIdentifier(ctx context.Context, identifierStr string)
 	if createdAt.Valid {
 		u.CreatedAt = timestamppb.New(createdAt.Time)
 	}
+	if lastActiveAt.Valid {
+		u.LastActiveAt = timestamppb.New(lastActiveAt.Time)
+	}
 	return &u, nil
+}
+
+func (s *Storage) UpdateUserLastActive(ctx context.Context, id string) error {
+	_, err := s.db.ExecContext(ctx, "UPDATE users SET last_active_at = CURRENT_TIMESTAMP WHERE id = $1", id)
+	return err
 }
 
 // Token operations
@@ -929,6 +943,239 @@ func (s *Storage) CountSessionsByOwner(ctx context.Context, ownerID string) (int
 	var count int32
 	err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM sessions WHERE owner_id = $1", ownerID).Scan(&count)
 	return count, err
+}
+
+func (s *Storage) CreateInvitation(ctx context.Context, senderID, receiverID string) error {
+	id := uuid.New().String()
+	_, err := s.db.ExecContext(ctx, "INSERT INTO invitations (id, sender_id, receiver_id) VALUES ($1, $2, $3)", id, senderID, receiverID)
+	if err != nil {
+		if isUniqueViolation(err) {
+			return storage.ErrAlreadyExists
+		}
+		return err
+	}
+	return nil
+}
+
+func (s *Storage) GetInvitation(ctx context.Context, id string) (*pb.FriendInvitation, error) {
+	var invitation pb.FriendInvitation
+	var sender, receiver pb.Player
+	var createdAt time.Time
+	err := s.db.QueryRowContext(ctx, `
+		SELECT i.id, i.created_at, 
+		       u1.id, u1.name, u1.identifier,
+		       u2.id, u2.name, u2.identifier
+		FROM invitations i
+		JOIN users u1 ON i.sender_id = u1.id
+		JOIN users u2 ON i.receiver_id = u2.id
+		WHERE i.id = $1`, id).Scan(
+		&invitation.Id, &createdAt,
+		&sender.Id, &sender.Name, &sender.Identifier,
+		&receiver.Id, &receiver.Name, &receiver.Identifier)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, storage.ErrNotFound
+		}
+		return nil, err
+	}
+	invitation.Sender = &sender
+	invitation.Receiver = &receiver
+	invitation.CreatedAt = timestamppb.New(createdAt)
+	return &invitation, nil
+}
+
+func (s *Storage) DeleteInvitation(ctx context.Context, id string) error {
+	_, err := s.db.ExecContext(ctx, "DELETE FROM invitations WHERE id = $1", id)
+	return err
+}
+
+func (s *Storage) ListInvitations(ctx context.Context, receiverID string, pageSize, pageNumber int32) ([]*pb.FriendInvitation, int32, error) {
+	var totalCount int32
+	err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM invitations WHERE receiver_id = $1", receiverID).Scan(&totalCount)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	query := `
+		SELECT i.id, i.created_at, 
+		       u1.id, u1.name, u1.identifier,
+		       u2.id, u2.name, u2.identifier
+		FROM invitations i
+		JOIN users u1 ON i.sender_id = u1.id
+		JOIN users u2 ON i.receiver_id = u2.id
+		WHERE i.receiver_id = $1
+		ORDER BY i.created_at DESC`
+	
+	var args []interface{}
+	args = append(args, receiverID)
+
+	if pageSize > 0 {
+		query += " LIMIT $2 OFFSET $3"
+		args = append(args, pageSize, (pageNumber-1)*pageSize)
+	}
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var invitations []*pb.FriendInvitation
+	for rows.Next() {
+		var invitation pb.FriendInvitation
+		var sender, receiver pb.Player
+		var createdAt time.Time
+		err := rows.Scan(
+			&invitation.Id, &createdAt,
+			&sender.Id, &sender.Name, &sender.Identifier,
+			&receiver.Id, &receiver.Name, &receiver.Identifier)
+		if err != nil {
+			return nil, 0, err
+		}
+		invitation.Sender = &sender
+		invitation.Receiver = &receiver
+		invitation.CreatedAt = timestamppb.New(createdAt)
+		invitations = append(invitations, &invitation)
+	}
+	return invitations, totalCount, nil
+}
+
+func (s *Storage) CreateFriendship(ctx context.Context, userID, friendID string) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	now := time.Now()
+	_, err = tx.ExecContext(ctx, "INSERT INTO friendships (user_id, friend_id, created_at) VALUES ($1, $2, $3)", userID, friendID, now)
+	if err != nil {
+		if isUniqueViolation(err) {
+			return storage.ErrAlreadyExists
+		}
+		return err
+	}
+
+	_, err = tx.ExecContext(ctx, "INSERT INTO friendships (user_id, friend_id, created_at) VALUES ($1, $2, $3)", friendID, userID, now)
+	if err != nil {
+		if isUniqueViolation(err) {
+			return storage.ErrAlreadyExists
+		}
+		return err
+	}
+
+	return tx.Commit()
+}
+
+func (s *Storage) DeleteFriendship(ctx context.Context, userID, friendID string) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	_, err = tx.ExecContext(ctx, "DELETE FROM friendships WHERE (user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1)", userID, friendID)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+func (s *Storage) ListFriends(ctx context.Context, userID string, pageSize, pageNumber int32) ([]*pb.Player, int32, error) {
+	var totalCount int32
+	err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM friendships WHERE user_id = $1", userID).Scan(&totalCount)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	query := `
+		SELECT u.id, u.name, u.identifier
+		FROM friendships f
+		JOIN users u ON f.friend_id = u.id
+		WHERE f.user_id = $1
+		ORDER BY u.name ASC`
+
+	var args []interface{}
+	args = append(args, userID)
+
+	if pageSize > 0 {
+		query += " LIMIT $2 OFFSET $3"
+		args = append(args, pageSize, (pageNumber-1)*pageSize)
+	}
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var friends []*pb.Player
+	for rows.Next() {
+		var friend pb.Player
+		err := rows.Scan(&friend.Id, &friend.Name, &friend.Identifier)
+		if err != nil {
+			return nil, 0, err
+		}
+		friends = append(friends, &friend)
+	}
+	return friends, totalCount, nil
+}
+
+func isUniqueViolation(err error) bool {
+	return strings.Contains(err.Error(), "unique_name_identifier") ||
+		strings.Contains(err.Error(), "users_pkey") ||
+		strings.Contains(err.Error(), "invitations_pkey") ||
+		strings.Contains(err.Error(), "friendships_pkey") ||
+		strings.Contains(err.Error(), "UNIQUE constraint failed") || // for sqlite if ever used
+		strings.Contains(err.Error(), "duplicate key value violates unique constraint")
+}
+
+// -- Notification Methods
+func (s *Storage) IncrementNotificationCounter(ctx context.Context, userID string, notificationType pb.NotificationType) error {
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO notifications (user_id, notification_type, count)
+		VALUES ($1, $2, 1)
+		ON CONFLICT (user_id, notification_type)
+		DO UPDATE SET count = notifications.count + 1`,
+		userID, int32(notificationType))
+	return err
+}
+
+func (s *Storage) ResetNotificationCounter(ctx context.Context, userID string, notificationType pb.NotificationType) error {
+	_, err := s.db.ExecContext(ctx, `
+		DELETE FROM notifications
+		WHERE user_id = $1 AND notification_type = $2`,
+		userID, int32(notificationType))
+	return err
+}
+
+func (s *Storage) GetNotifications(ctx context.Context, userID string) ([]*pb.Notification, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT notification_type, count
+		FROM notifications
+		WHERE user_id = $1`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var notifications []*pb.Notification
+	for rows.Next() {
+		var nType int32
+		var count int32
+		if err := rows.Scan(&nType, &count); err != nil {
+			return nil, err
+		}
+		notifications = append(notifications, &pb.Notification{
+			Type:  pb.NotificationType(nType),
+			Count: count,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return notifications, nil
 }
 
 // Ensure Storage implements storage.Storage at compile time.

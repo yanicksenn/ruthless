@@ -30,6 +30,8 @@ type TestClient struct {
 	SessionClient    pb.SessionServiceClient
 	GameClient       pb.GameServiceClient
 	UserClient       pb.UserServiceClient
+	FriendClient     pb.FriendServiceClient
+	NotificationClient pb.NotificationServiceClient
 	AuthSecret       string
 	UserTokenSources map[string]oauth2.TokenSource
 	Store            storage.Storage
@@ -48,6 +50,8 @@ func NewTestClient(addr string, authSecret string, store storage.Storage) *TestC
 		SessionClient: pb.NewSessionServiceClient(conn),
 		GameClient:    pb.NewGameServiceClient(conn),
 		UserClient:    pb.NewUserServiceClient(conn),
+		FriendClient:  pb.NewFriendServiceClient(conn),
+		NotificationClient: pb.NewNotificationServiceClient(conn),
 		AuthSecret:    authSecret,
 		UserTokenSources: make(map[string]oauth2.TokenSource),
 		Store:         store,

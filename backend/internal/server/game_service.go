@@ -140,6 +140,11 @@ func (s *Server) SelectWinner(ctx context.Context, req *pb.SelectWinnerRequest) 
 		return nil, status.Errorf(codes.Internal, "failed to save game state")
 	}
 
+	s.LogUsageEvent(EventRoundCompleted, player.Id, map[string]interface{}{
+		"game_id":     game.Id,
+		"round_index": len(game.Rounds),
+	})
+
 	return &pb.SelectWinnerResponse{}, nil
 }
 

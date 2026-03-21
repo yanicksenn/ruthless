@@ -2,4 +2,4 @@
 set -e
 
 echo "==> Stopping environment..."
-docker-compose -p ruthless-prod down -v
+docker-compose -p ruthless-prod down

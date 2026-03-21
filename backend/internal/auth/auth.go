@@ -188,14 +188,16 @@ type Handler struct {
 	exchanger *Exchanger
 	generator *TokenGenerator
 	uiURL     string
+	OnLogin   func(ctx context.Context, userId string)
 }
 
-func NewHandler(store storage.Storage, exchanger *Exchanger, generator *TokenGenerator, uiURL string) *Handler {
+func NewHandler(store storage.Storage, exchanger *Exchanger, generator *TokenGenerator, uiURL string, onLogin func(ctx context.Context, userId string)) *Handler {
 	return &Handler{
 		store:     store,
 		exchanger: exchanger,
 		generator: generator,
 		uiURL:     uiURL,
+		OnLogin:   onLogin,
 	}
 }
 
@@ -254,6 +256,10 @@ func (h *Handler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Token generation failed: %v", err)
 		http.Error(w, "Failed to generate session", http.StatusInternalServerError)
 		return
+	}
+
+	if h.OnLogin != nil {
+		h.OnLogin(r.Context(), user.Id)
 	}
 
 	target, err := url.Parse(h.uiURL)

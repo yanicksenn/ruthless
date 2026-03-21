@@ -1,14 +1,13 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { userClient, cardClient, createOptions } from '../api/client';
 import { User } from '../api/ruthless';
-import { ConfigPublic_Limits, ConfigPublic_AuthProvider } from '../api/config';
+import { ConfigPublic_Limits, AuthProvider as ConfigAuthProvider } from '../api/config';
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
   loading: boolean;
-  isDevelopment: boolean;
-  authProvider: ConfigPublic_AuthProvider;
+  authProvider: ConfigAuthProvider;
   limits: ConfigPublic_Limits | null;
   loginWithToken: (token: string) => void;
   completeRegistration: (name: string) => Promise<void>;
@@ -21,19 +20,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(localStorage.getItem('ruthless_token'));
   const [loading, setLoading] = useState(true);
-  const [isDevelopment, setIsDevelopment] = useState(false);
-  const [authProvider, setAuthProvider] = useState<ConfigPublic_AuthProvider>(ConfigPublic_AuthProvider.UNSPECIFIED);
+  const [authProvider, setAuthProvider] = useState<ConfigAuthProvider>(ConfigAuthProvider.UNSPECIFIED);
   const [limits, setLimits] = useState<ConfigPublic_Limits | null>(null);
 
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const response = await cardClient.getConfig({}, {});
-        // GetConfig now returns ConfigPublic, so fields are directly on the response
-        setIsDevelopment(response.response.isDevelopment || false);
+        const response = await cardClient.getEnv({}, {});
         setAuthProvider(response.response.authProvider);
-        if (response.response.limits) {
-          setLimits(response.response.limits);
+        if (response.response.config?.limits) {
+          setLimits(response.response.config.limits);
         }
 
       } catch (error) {
@@ -128,7 +124,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, isDevelopment, authProvider, limits, loginWithToken, completeRegistration, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, authProvider, limits, loginWithToken, completeRegistration, logout }}>
       {children}
     </AuthContext.Provider>
   );

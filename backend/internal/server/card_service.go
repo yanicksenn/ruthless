@@ -81,6 +81,12 @@ func (s *Server) CreateCard(ctx context.Context, req *pb.CreateCardRequest) (*pb
 		return nil, status.Errorf(codes.Internal, "failed to save card: %v", err)
 	}
 
+	s.LogUsageEvent(EventCardCreated, player.Id, map[string]interface{}{
+		"card_id":    card.Id,
+		"color":      card.Color.String(),
+		"text_chars": len(card.Text),
+	})
+
 	return card, nil
 }
 

@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
@@ -121,7 +122,14 @@ func serverRun(cmd *cobra.Command, args []string) {
 		}
 
 		uiURL := getEnv("UI_URL", getEnv("FRONTEND_URL", "http://localhost:3000"))
-		authHandler = auth.NewHandler(store, exchanger, tokenGen, uiURL)
+		
+		srv := server.New(store, authenticator, cfg)
+		authHandler = auth.NewHandler(store, exchanger, tokenGen, uiURL, func(ctx context.Context, userId string) {
+			srv.LogUsageEvent(server.EventLogin, userId, map[string]interface{}{})
+		})
+		
+		// Set srv again because we need it later for RegisterWithGRPC
+		// actually we already have the srv created above.
 	} else {
 		log.Fatalf("Unsupported auth type: %s", authFlag)
 	}

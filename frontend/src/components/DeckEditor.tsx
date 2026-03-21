@@ -192,7 +192,7 @@ export const DeckEditor: React.FC<DeckEditorProps> = ({ deckId, onBack, initialT
             onClick={onBack}
             className="mb-4 text-gray-400 hover:text-white transition-colors flex items-center gap-2 font-bold uppercase tracking-widest text-xs"
           >
-            <ArrowLeft size={16} /> Back to Decks
+            <ArrowLeft size={16} /> Back to Library
           </button>
           <div className="flex flex-col gap-2">
               <h1 className="text-5xl font-black tracking-tighter text-white">{deck.name}</h1>

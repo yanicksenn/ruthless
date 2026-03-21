@@ -111,3 +111,11 @@ module "load_balancer" {
   backend_service_name  = module.cloud_run.backend_service_name
 }
 
+module "monitoring" {
+  source       = "../../modules/monitoring"
+  depends_on   = [google_project_service.services]
+  project_id   = var.project_id
+  project_name = var.project_name
+  environment  = var.environment
+}
+

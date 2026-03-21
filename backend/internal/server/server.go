@@ -2,8 +2,11 @@ package server
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -22,10 +25,13 @@ type Server struct {
 	pb.UnimplementedSessionServiceServer
 	pb.UnimplementedGameServiceServer
 	pb.UnimplementedUserServiceServer
+	pb.UnimplementedFriendServiceServer
+	pb.UnimplementedNotificationServiceServer
 
-	store  storage.Storage
-	auth   auth.Authenticator
-	config *pb.Config
+	store         storage.Storage
+	auth          auth.Authenticator
+	config        *pb.Config
+	authProvider  pb.AuthProvider
 }
 
 func New(store storage.Storage, authenticator auth.Authenticator, config *pb.Config) *Server {
@@ -48,19 +54,21 @@ func New(store storage.Storage, authenticator auth.Authenticator, config *pb.Con
 		config.Private.Registration = &pb.ConfigPrivate_Registration{}
 	}
 
+	var authProvider pb.AuthProvider
+
 	// Detect development mode based on authenticator type
 	if _, ok := authenticator.(*auth.FakeAuthenticator); ok {
-		config.Public.IsDevelopment = true
-		config.Public.AuthProvider = pb.ConfigPublic_AUTH_PROVIDER_FAKE
+		authProvider = pb.AuthProvider_AUTH_PROVIDER_FAKE
 	} else {
-		config.Public.AuthProvider = pb.ConfigPublic_AUTH_PROVIDER_GOOGLE
+		authProvider = pb.AuthProvider_AUTH_PROVIDER_GOOGLE
 	}
 
 
 	return &Server{
-		store:  store,
-		auth:   authenticator,
-		config: config,
+		store:         store,
+		auth:          authenticator,
+		config:        config,
+		authProvider:  authProvider,
 	}
 }
 
@@ -70,6 +78,37 @@ func (s *Server) RegisterWithGRPC(grpcServer *grpc.Server) {
 	pb.RegisterSessionServiceServer(grpcServer, s)
 	pb.RegisterGameServiceServer(grpcServer, s)
 	pb.RegisterUserServiceServer(grpcServer, s)
+	pb.RegisterFriendServiceServer(grpcServer, s)
+	pb.RegisterNotificationServiceServer(grpcServer, s)
+}
+
+type UsageEvent string
+
+const (
+	EventAccountCreated UsageEvent = "AccountCreated"
+	EventLogin          UsageEvent = "Login"
+	EventSessionCreated UsageEvent = "SessionCreated"
+	EventRoundCompleted UsageEvent = "RoundCompleted"
+	EventCardCreated    UsageEvent = "CardCreated"
+	EventDeckCreated    UsageEvent = "DeckCreated"
+	EventUserActivity   UsageEvent = "UserActivity"
+)
+
+func (s *Server) LogUsageEvent(event UsageEvent, userID string, metadata map[string]interface{}) {
+	payload := map[string]interface{}{
+		"severity": "INFO",
+		"message":  fmt.Sprintf("Usage event: %s", event),
+		"event":    event,
+		"user_id":  userID,
+		"metadata": metadata,
+		"time":     time.Now().Format(time.RFC3339),
+	}
+	b, err := json.Marshal(payload)
+	if err != nil {
+		log.Printf("Failed to marshal usage event: %v", err)
+		return
+	}
+	fmt.Println(string(b))
 }
 
 type PlayerKey struct{}
@@ -105,7 +144,7 @@ func (s *Server) UnaryAuthInterceptor() grpc.UnaryServerInterceptor {
 		user, err := s.store.GetUser(ctx, player.Id)
 		if err != nil {
 			if err == storage.ErrNotFound {
-				if s.config.Public.IsDevelopment {
+				if s.authProvider == pb.AuthProvider_AUTH_PROVIDER_FAKE {
 					// In development mode, auto-create the user profile if it's missing.
 					user = &pb.User{
 						Id:                player.Id,
@@ -130,6 +169,15 @@ func (s *Server) UnaryAuthInterceptor() grpc.UnaryServerInterceptor {
 			}
 		}
 
+		// Update user activity
+		go func() {
+			// Use a background context for the async update
+			_ = s.store.UpdateUserLastActive(context.Background(), user.Id)
+			s.LogUsageEvent(EventUserActivity, player.Id, map[string]interface{}{
+				"method": info.FullMethod,
+			})
+		}()
+
 		ctx = context.WithValue(ctx, PlayerKey{}, player)
 		return handler(ctx, req)
 	}
@@ -148,7 +196,7 @@ func (s *Server) UnaryLoggingInterceptor() grpc.UnaryServerInterceptor {
 
 func requiresAuth(method string) bool {
 	if strings.HasPrefix(method, "/ruthless.v1.CardService/") {
-		if strings.Contains(method, "GetConfig") {
+		if strings.Contains(method, "GetEnv") {
 			return false
 		}
 		return true
@@ -174,6 +222,12 @@ func requiresAuth(method string) bool {
 	if strings.HasPrefix(method, "/ruthless.v1.UserService/") {
 		return true
 	}
+	if strings.HasPrefix(method, "/ruthless.v1.FriendService/") {
+		return true
+	}
+	if strings.HasPrefix(method, "/ruthless.v1.NotificationService/") {
+		return true
+	}
 
 	return false
 }
@@ -182,7 +236,7 @@ func isAllowedWhilePending(method string) bool {
 	allowed := []string{
 		"UserService/CompleteRegistration",
 		"UserService/GetMe",
-		"CardService/GetConfig",
+		"CardService/GetEnv",
 	}
 	for _, m := range allowed {
 		if strings.HasSuffix(method, m) {
@@ -191,6 +245,17 @@ func isAllowedWhilePending(method string) bool {
 	}
 	return false
 }
-func (s *Server) GetConfig(ctx context.Context, _ *emptypb.Empty) (*pb.ConfigPublic, error) {
-	return s.config.Public, nil
+func (s *Server) GetEnv(ctx context.Context, _ *emptypb.Empty) (*pb.Env, error) {
+	return &pb.Env{
+		Config:        s.config.Public,
+		AuthProvider:  s.authProvider,
+	}, nil
+}
+
+func parseIdentifier(full string) (string, string, error) {
+	parts := strings.Split(full, "#")
+	if len(parts) != 2 {
+		return "", "", fmt.Errorf("expected format Name#12345678")
+	}
+	return parts[0], parts[1], nil
 }

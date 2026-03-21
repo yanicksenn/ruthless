@@ -52,42 +52,7 @@ export const Decks: React.FC<DecksProps> = ({ activeDeckId, activeTab, onSelectD
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-4 py-12">
-      <header className="flex justify-between items-start mb-12">
-        <div>
-          <h1 className="text-5xl font-black tracking-tighter text-white">DECKS</h1>
-          <p className="text-gray-400 font-bold uppercase tracking-widest text-sm">
-            Manage your custom collections
-          </p>
-          {user && (
-            <div className="mt-4 flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs font-bold ring-1 ring-primary/30">
-                {user.name.slice(0, 2).toUpperCase()}
-              </div>
-              <span className="text-gray-300 font-bold text-sm tracking-tight">
-                {user.name}
-                {user.identifier && <span className="text-gray-500 italic">#{user.identifier}</span>}
-              </span>
-            </div>
-          )}
-        </div>
-        <div className="flex gap-3">
-          <button
-            onClick={handleOpenDeckDialog}
-            className="bg-secondary hover:bg-secondary/80 text-black font-black px-6 py-3 rounded-2xl flex items-center gap-2 transition-all transform hover:scale-105 shadow-lg shadow-secondary/10"
-          >
-            <Plus size={20} />
-            NEW DECK
-          </button>
-          <button
-            onClick={logout}
-            className="p-3 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-2xl transition-all ring-1 ring-white/5"
-            title="Logout"
-          >
-            <LogOut size={20} />
-          </button>
-        </div>
-      </header>
+    <>
 
       <div className="glass p-8 rounded-[2.5rem] min-h-[500px] border border-white/5 shadow-2xl relative overflow-hidden">
         {loading && (
@@ -97,9 +62,18 @@ export const Decks: React.FC<DecksProps> = ({ activeDeckId, activeTab, onSelectD
         )}
 
         <div className="space-y-8">
-          <div>
-            <h2 className="text-3xl font-black text-white tracking-tight">Secret Stashes</h2>
-            <p className="text-gray-500 text-sm font-bold uppercase tracking-widest">Your collections of misery</p>
+          <div className="flex justify-between items-start">
+            <div>
+              <h2 className="text-3xl font-black text-white tracking-tight">Secret Stashes</h2>
+              <p className="text-gray-500 text-sm font-bold uppercase tracking-widest">Your collections of misery</p>
+            </div>
+            <button
+              onClick={handleOpenDeckDialog}
+              className="bg-secondary hover:bg-secondary/80 text-black font-black px-6 py-3 rounded-2xl flex items-center gap-2 transition-all transform hover:scale-105 shadow-lg shadow-secondary/10"
+            >
+              <Plus size={20} />
+              NEW DECK
+            </button>
           </div>
           
           {decks.length === 0 ? (
@@ -179,6 +153,6 @@ export const Decks: React.FC<DecksProps> = ({ activeDeckId, activeTab, onSelectD
         submitLabel="Create Deck"
         maxLength={limits?.maxDeckNameLength}
       />
-    </div>
+    </>
   );
 };

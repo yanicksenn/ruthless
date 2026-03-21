@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	pb "github.com/yanicksenn/ruthless/api/v1"
@@ -87,7 +88,7 @@ func runVisibilityTests(t *testing.T, ctx context.Context, c *testutil.TestClien
 
 	// 4. Alice adds Bob as contributor to her deck
 	t.Log("  [RUN] Alice adds Bob as contributor...")
-	_, err = c.DeckClient.AddContributor(aliceCtx, &pb.AddContributorRequest{DeckId: aliceDeck.Id, Identifier: bobUser.Identifier})
+	_, err = c.DeckClient.AddContributor(aliceCtx, &pb.AddContributorRequest{DeckId: aliceDeck.Id, Identifier: fmt.Sprintf("%s#%s", bobUser.Name, bobUser.Identifier)})
 	testutil.AssertSuccess(t, err, "Alice AddContributor Bob")
 
 	// 5. Bob lists decks - should now see Alice's deck

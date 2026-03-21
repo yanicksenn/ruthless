@@ -25,7 +25,8 @@ type Storage interface {
 	CreateUser(ctx context.Context, user *pb.User) error
 	UpdateUser(ctx context.Context, user *pb.User) error
 	GetUser(ctx context.Context, id string) (*pb.User, error)
-	GetUserByIdentifier(ctx context.Context, identifier string) (*pb.User, error)
+	GetUserByNameAndIdentifier(ctx context.Context, name, identifier string) (*pb.User, error)
+	UpdateUserLastActive(ctx context.Context, id string) error
 
 	// Auth Token operations
 	RevokeToken(ctx context.Context, token string, expiresAt time.Time) error
@@ -55,4 +56,18 @@ type Storage interface {
 	CountCardsByOwner(ctx context.Context, ownerID string) (int32, error)
 	CountDecksByOwner(ctx context.Context, ownerID string) (int32, error)
 	CountSessionsByOwner(ctx context.Context, ownerID string) (int32, error)
+
+	// Friend and invitation operations
+	CreateInvitation(ctx context.Context, senderID, receiverID string) error
+	GetInvitation(ctx context.Context, id string) (*pb.FriendInvitation, error)
+	DeleteInvitation(ctx context.Context, id string) error
+	ListInvitations(ctx context.Context, receiverID string, pageSize, pageNumber int32) ([]*pb.FriendInvitation, int32, error)
+	CreateFriendship(ctx context.Context, userID, friendID string) error
+	DeleteFriendship(ctx context.Context, userID, friendID string) error
+	ListFriends(ctx context.Context, userID string, pageSize, pageNumber int32) ([]*pb.Player, int32, error)
+
+	// Notification operations
+	IncrementNotificationCounter(ctx context.Context, userID string, notificationType pb.NotificationType) error
+	ResetNotificationCounter(ctx context.Context, userID string, notificationType pb.NotificationType) error
+	GetNotifications(ctx context.Context, userID string) ([]*pb.Notification, error)
 }

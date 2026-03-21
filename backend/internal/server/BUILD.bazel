@@ -5,7 +5,9 @@ go_library(
     srcs = [
         "card_service.go",
         "deck_service.go",
+        "friend_service.go",
         "game_service.go",
+        "notification_service.go",
         "seed.go",
         "server.go",
         "session_service.go",

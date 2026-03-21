@@ -1,4 +1,5 @@
 load("@rules_go//go:def.bzl", "go_binary", "go_library")
+load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 
 go_library(
     name = "cah_lib",
@@ -14,8 +15,6 @@ go_binary(
     embed = [":cah_lib"],
     visibility = ["//visibility:public"],
 )
-
-load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 
 pkg_tar(
     name = "cah_tar",

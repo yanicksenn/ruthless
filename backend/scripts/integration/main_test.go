@@ -59,6 +59,24 @@ func TestIntegration(t *testing.T) {
 		t.Fatalf("Failed to complete registration for Bob: %v", err)
 	}
 
+	// Initialize Charlie
+	if store != nil {
+		store.CreateUser(ctx, &pb.User{Id: "Charlie", Name: "Charlie"})
+	}
+	charlieCtx := client.GetAuthContext(ctx, "Charlie")
+	if _, err := client.UserClient.CompleteRegistration(charlieCtx, &pb.CompleteRegistrationRequest{Name: "Charlie"}); err != nil {
+		t.Fatalf("Failed to complete registration for Charlie: %v", err)
+	}
+
+	// Initialize Dave
+	if store != nil {
+		store.CreateUser(ctx, &pb.User{Id: "Dave", Name: "Dave"})
+	}
+	daveCtx := client.GetAuthContext(ctx, "Dave")
+	if _, err := client.UserClient.CompleteRegistration(daveCtx, &pb.CompleteRegistrationRequest{Name: "Dave"}); err != nil {
+		t.Fatalf("Failed to complete registration for Dave: %v", err)
+	}
+
 	runID := fmt.Sprintf("%d", time.Now().UnixNano())
 	t.Run("AuthTests", func(t *testing.T) {
 		runAuthTests(t, ctx, client, runID)
@@ -86,6 +104,14 @@ func TestIntegration(t *testing.T) {
 
 	t.Run("VisibilityTests", func(t *testing.T) {
 		runVisibilityTests(t, ctx, client, runID)
+	})
+
+	t.Run("FriendTests", func(t *testing.T) {
+		runFriendTests(t, ctx, client, runID)
+	})
+
+	t.Run("NotificationTests", func(t *testing.T) {
+		runNotificationTests(t, ctx, client, runID)
 	})
 
 	t.Log("✅ All Integration Tests Passed!")

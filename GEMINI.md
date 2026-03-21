@@ -11,8 +11,8 @@ bazel test //backend/scripts/integration:integration_test
 ## 🏗️ Build the Whole Stack
 Ensure the entire environment is freshly built and up and running.
 
-IMPORTANT: If you want to verify whether a feature works in the browser, YOU MUST ALWAYS user the `docker-compose.dev.yml` file. This is because the `docker-compose.prod.yml` file uses Google OAuth provider and you can't login there.
+IMPORTANT: If you want to verify whether a feature works in the browser, YOU MUST ALWAYS use the `run_dev_local.sh` script. This script ensures that both the backend and frontend are built and started correctly.
 
 ```bash
-docker-compose -p ruthless-dev -f docker-compose.dev.yml up --build -d
+sh scripts/run_dev_local.sh
 ```
