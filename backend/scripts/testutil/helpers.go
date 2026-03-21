@@ -28,6 +28,7 @@ type TestClient struct {
 	CardClient       pb.CardServiceClient
 	DeckClient       pb.DeckServiceClient
 	SessionClient    pb.SessionServiceClient
+	SessionInvitationClient pb.SessionInvitationServiceClient
 	GameClient       pb.GameServiceClient
 	UserClient       pb.UserServiceClient
 	FriendClient     pb.FriendServiceClient
@@ -48,6 +49,7 @@ func NewTestClient(addr string, authSecret string, store storage.Storage) *TestC
 		CardClient:    pb.NewCardServiceClient(conn),
 		DeckClient:    pb.NewDeckServiceClient(conn),
 		SessionClient: pb.NewSessionServiceClient(conn),
+		SessionInvitationClient: pb.NewSessionInvitationServiceClient(conn),
 		GameClient:    pb.NewGameServiceClient(conn),
 		UserClient:    pb.NewUserServiceClient(conn),
 		FriendClient:  pb.NewFriendServiceClient(conn),

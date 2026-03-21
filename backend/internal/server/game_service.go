@@ -87,6 +87,9 @@ func (s *Server) StartGame(ctx context.Context, req *pb.StartGameRequest) (*pb.G
 		return nil, status.Errorf(codes.Internal, "failed to save game state")
 	}
 
+	// Session is no longer in WAITING state, delete unanswered invitations
+	_ = s.store.DeleteUnansweredSessionInvitations(ctx, session.Id)
+
 	return domain.StripHidden(game), nil
 }
 

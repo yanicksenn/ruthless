@@ -11,6 +11,7 @@ go_library(
         "seed.go",
         "server.go",
         "session_service.go",
+        "session_invitation_service.go",
         "user_service.go",
     ],
     importpath = "github.com/yanicksenn/ruthless/backend/internal/server",

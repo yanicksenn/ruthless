@@ -27,6 +27,7 @@ type Server struct {
 	pb.UnimplementedUserServiceServer
 	pb.UnimplementedFriendServiceServer
 	pb.UnimplementedNotificationServiceServer
+	pb.UnimplementedSessionInvitationServiceServer
 
 	store         storage.Storage
 	auth          auth.Authenticator
@@ -80,6 +81,7 @@ func (s *Server) RegisterWithGRPC(grpcServer *grpc.Server) {
 	pb.RegisterUserServiceServer(grpcServer, s)
 	pb.RegisterFriendServiceServer(grpcServer, s)
 	pb.RegisterNotificationServiceServer(grpcServer, s)
+	pb.RegisterSessionInvitationServiceServer(grpcServer, s)
 }
 
 type UsageEvent string
@@ -226,6 +228,9 @@ func requiresAuth(method string) bool {
 		return true
 	}
 	if strings.HasPrefix(method, "/ruthless.v1.NotificationService/") {
+		return true
+	}
+	if strings.HasPrefix(method, "/ruthless.v1.SessionInvitationService/") {
 		return true
 	}
 

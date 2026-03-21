@@ -7,9 +7,15 @@ import { CreationDialog } from './CreationDialog';
 
 type Tab = 'friends' | 'invitations';
 
-export const Friends: React.FC = () => {
+interface FriendsProps {
+  initialTab?: 'friends' | 'invitations' | 'list';
+}
+
+export const Friends: React.FC<FriendsProps> = ({ initialTab }) => {
   const { token, user, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<Tab>('friends');
+  const [activeTab, setActiveTab] = useState<Tab>(
+    initialTab === 'list' || initialTab === 'friends' ? 'friends' : 'invitations'
+  );
   const [friends, setFriends] = useState<Player[]>([]);
   const [invitations, setInvitations] = useState<FriendInvitation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -137,6 +143,15 @@ export const Friends: React.FC = () => {
       alert(`Failed to remove friend: ${err.message || 'Unknown error'}`);
     }
   };
+
+  // Sync tab with URL
+  useEffect(() => {
+    const tabName = activeTab === 'friends' ? 'list' : 'invitations';
+    const newPath = `/friends/${tabName}`;
+    if (window.location.pathname !== newPath) {
+      window.history.pushState(null, '', newPath);
+    }
+  }, [activeTab]);
 
   return (
     <div className="max-w-6xl mx-auto p-4 py-12">

@@ -1082,9 +1082,31 @@ func (s *Storage) DeleteFriendship(ctx context.Context, userID, friendID string)
 	return tx.Commit()
 }
 
-func (s *Storage) ListFriends(ctx context.Context, userID string, pageSize, pageNumber int32) ([]*pb.Player, int32, error) {
+func (s *Storage) ListFriends(ctx context.Context, userID string, excludeSessionID string, filter string, pageSize, pageNumber int32) ([]*pb.Player, int32, error) {
 	var totalCount int32
-	err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM friendships WHERE user_id = $1", userID).Scan(&totalCount)
+	countQuery := "SELECT COUNT(*) FROM friendships f JOIN users u ON f.friend_id = u.id WHERE f.user_id = $1"
+	var countArgs []interface{}
+	countArgs = append(countArgs, userID)
+	countArgCount := 1
+
+	if excludeSessionID != "" {
+		countArgCount++
+		countQuery += ` AND u.id NOT IN (
+			SELECT player_id FROM session_players WHERE session_id = $` + strconv.Itoa(countArgCount) + `
+			UNION
+			SELECT receiver_id FROM session_invitations WHERE session_id = $` + strconv.Itoa(countArgCount) + `
+		)`
+		countArgs = append(countArgs, excludeSessionID)
+	}
+
+	if filter != "" {
+		countArgCount++
+		countQuery += ` AND u.name ILIKE $` + strconv.Itoa(countArgCount)
+		filterWildcard := "%" + filter + "%"
+		countArgs = append(countArgs, filterWildcard)
+	}
+
+	err := s.db.QueryRowContext(ctx, countQuery, countArgs...).Scan(&totalCount)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -1093,15 +1115,39 @@ func (s *Storage) ListFriends(ctx context.Context, userID string, pageSize, page
 		SELECT u.id, u.name, u.identifier
 		FROM friendships f
 		JOIN users u ON f.friend_id = u.id
-		WHERE f.user_id = $1
-		ORDER BY u.name ASC`
+		WHERE f.user_id = $1`
 
 	var args []interface{}
 	args = append(args, userID)
+	argCount := 1
+
+	if excludeSessionID != "" {
+		argCount++
+		query += ` AND u.id NOT IN (
+			SELECT player_id FROM session_players WHERE session_id = $` + strconv.Itoa(argCount) + `
+			UNION
+			SELECT receiver_id FROM session_invitations WHERE session_id = $` + strconv.Itoa(argCount) + `
+		)`
+		args = append(args, excludeSessionID)
+	}
+
+	if filter != "" {
+		argCount++
+		query += ` AND u.name ILIKE $` + strconv.Itoa(argCount)
+		filterWildcard := "%" + filter + "%"
+		args = append(args, filterWildcard)
+	}
+
+	query += ` ORDER BY u.name ASC`
 
 	if pageSize > 0 {
-		query += " LIMIT $2 OFFSET $3"
-		args = append(args, pageSize, (pageNumber-1)*pageSize)
+		argCount++
+		query += ` LIMIT $` + strconv.Itoa(argCount)
+		args = append(args, pageSize)
+		
+		argCount++
+		query += ` OFFSET $` + strconv.Itoa(argCount)
+		args = append(args, (pageNumber-1)*pageSize)
 	}
 
 	rows, err := s.db.QueryContext(ctx, query, args...)

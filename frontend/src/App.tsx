@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from './context/AuthContext';
 import { notificationClient, createOptions } from './api/client';
+import { NotificationType } from './api/ruthless';
 import { Login } from './components/Login';
 import { Lobby } from './components/Lobby';
 import { GameBoard } from './components/GameBoard';
@@ -36,7 +37,11 @@ function App() {
     if (path === '/library') return { view: 'library' as ViewState, sessionId: null, deckId: null, activeTab: 'decks' };
     if (path === '/decks') return { view: 'library' as ViewState, sessionId: null, deckId: null, activeTab: 'decks' };
     if (path === '/cards') return { view: 'library' as ViewState, sessionId: null, deckId: null, activeTab: 'cards' };
-    if (path === '/friends') return { view: 'friends' as ViewState, sessionId: null, deckId: null, activeTab: null };
+    if (path.startsWith('/friends/')) {
+      const tab = path.split('/')[2];
+      return { view: 'friends' as ViewState, sessionId: null, deckId: null, activeTab: tab || 'list' };
+    }
+    if (path === '/friends') return { view: 'friends' as ViewState, sessionId: null, deckId: null, activeTab: 'list' };
     return { view: 'sessions' as ViewState, sessionId: null, deckId: null, activeTab: null };
   };
 
@@ -46,17 +51,25 @@ function App() {
   const [activeDeckId, setActiveDeckId] = useState<string | null>(initial.deckId);
   const [activeTab, setActiveTab] = useState<string | null>(initial.activeTab);
   const [view, setViewState] = useState<ViewState>(initial.view);
-  const [hasNotifications, setHasNotifications] = useState(false);
+  const [hasFriendNotifications, setHasFriendNotifications] = useState(false);
+  const [hasSessionNotifications, setHasSessionNotifications] = useState(false);
 
   const checkNotifications = async () => {
     if (!user || user.pendingCompletion) return;
     try {
       const res = await notificationClient.getNotifications({}, createOptions(token));
       const notifications = res.response.notifications || [];
-      const count = notifications.reduce((acc: any, n: any) => acc + n.count, 0);
-      const changed = (count > 0) !== hasNotifications;
-      setHasNotifications(count > 0);
-      if (changed && count > 0) {
+      
+      const friendCount = notifications.find((n: any) => n.type === NotificationType.FRIENDS_PENDING_INVITATIONS)?.count || 0;
+      const sessionCount = notifications.find((n: any) => n.type === NotificationType.SESSION_INVITATIONS_PENDING)?.count || 0;
+      
+      const friendChanged = (friendCount > 0) !== hasFriendNotifications;
+      const sessionChanged = (sessionCount > 0) !== hasSessionNotifications;
+      
+      setHasFriendNotifications(friendCount > 0);
+      setHasSessionNotifications(sessionCount > 0);
+      
+      if ((friendChanged && friendCount > 0) || (sessionChanged && sessionCount > 0)) {
         window.dispatchEvent(new Event('notifications-updated'));
       }
     } catch (err) {
@@ -67,7 +80,7 @@ function App() {
   useEffect(() => {
     checkNotifications();
     const interval = setInterval(checkNotifications, 10000);
-    const handleReset = () => setHasNotifications(false);
+    const handleReset = () => checkNotifications();
     window.addEventListener('notifications-reset', handleReset);
     return () => {
       clearInterval(interval);
@@ -85,6 +98,8 @@ function App() {
       newPath = `/decks/${deckId}/subscribe`;
     } else if (newView === 'library' && !deckId) {
       newPath = `/library/${tab || 'decks'}`;
+    } else if (newView === 'friends') {
+      newPath = `/friends/${tab || 'list'}`;
     } else {
       newPath = `/${newView === 'sessions' ? '' : newView}`;
     }
@@ -164,12 +179,15 @@ function App() {
         <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 glass px-4 py-2 rounded-2xl border border-white/10 flex gap-2 z-50">
           <button
             onClick={() => setView('sessions')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all ${
+            className={`relative flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all ${
               view === 'sessions' ? 'bg-primary text-background' : 'text-gray-400 hover:text-white'
             }`}
           >
             <LayoutDashboard size={16} />
             SESSIONS
+            {hasSessionNotifications && (
+              <span className="w-2 h-2 bg-red-500 rounded-full inline-block" />
+            )}
           </button>
 
           <button
@@ -185,14 +203,14 @@ function App() {
             LIBRARY
           </button>
           <button
-            onClick={() => setView('friends')}
+            onClick={() => setView('friends', null, null, 'list')}
             className={`relative flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all ${
               view === 'friends' ? 'bg-primary text-background' : 'text-gray-400 hover:text-white'
             }`}
           >
             <UsersIcon size={16} />
             FRIENDS
-            {hasNotifications && (
+            {hasFriendNotifications && (
               <span className="w-2 h-2 bg-red-500 rounded-full inline-block" />
             )}
           </button>
@@ -221,7 +239,7 @@ function App() {
         ) : view === 'deck_subscribe' && activeDeckId ? (
           <DeckSubscribe deckId={activeDeckId} />
         ) : view === 'friends' ? (
-          <Friends />
+          <Friends initialTab={(activeTab || 'list') as any} />
         ) : (
           /* Fallback if somehow in game view without active session */
           <Lobby 

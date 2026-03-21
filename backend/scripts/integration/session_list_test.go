@@ -92,7 +92,9 @@ func runSessionListTests(t *testing.T, ctx context.Context, c *testutil.TestClie
 	// 6. Verify Alice and Bob see the PLAYING session, but Charlie does NOT
 	t.Log("  [RUN] Verifying session visibility for participants vs non-participants...")
 	
-	aliceList, _ = c.SessionClient.ListSessions(aliceCtx, &pb.ListSessionsRequest{})
+	aliceList, _ = c.SessionClient.ListSessions(aliceCtx, &pb.ListSessionsRequest{
+		View: pb.SessionView_SESSION_VIEW_ACTIVE,
+	})
 	foundForAlice = false
 	for _, s := range aliceList.Sessions {
 		if s.Id == session.Id {
@@ -104,7 +106,9 @@ func runSessionListTests(t *testing.T, ctx context.Context, c *testutil.TestClie
 		t.Errorf("Alice should see the PLAYING session she is in")
 	}
 
-	charlieList, err := c.SessionClient.ListSessions(charlieCtx, &pb.ListSessionsRequest{})
+	charlieList, err := c.SessionClient.ListSessions(charlieCtx, &pb.ListSessionsRequest{
+		View: pb.SessionView_SESSION_VIEW_ACTIVE,
+	})
 	testutil.AssertSuccess(t, err, "Charlie ListSessions")
 	
 	foundForCharlie := false

@@ -580,6 +580,10 @@ export interface AddDeckToSessionResponse {
  * @generated from protobuf message ruthless.v1.ListSessionsRequest
  */
 export interface ListSessionsRequest {
+    /**
+     * @generated from protobuf field: ruthless.v1.SessionView view = 1
+     */
+    view: SessionView;
 }
 /**
  * @generated from protobuf message ruthless.v1.ListSessionsResponse
@@ -604,6 +608,99 @@ export interface LeaveSessionRequest {
  */
 export interface LeaveSessionResponse {
 }
+// ----------------- Session Invitation Service -----------------
+
+/**
+ * @generated from protobuf message ruthless.v1.SessionInvitation
+ */
+export interface SessionInvitation {
+    /**
+     * @generated from protobuf field: string id = 1
+     */
+    id: string;
+    /**
+     * @generated from protobuf field: ruthless.v1.Session session = 2
+     */
+    session?: Session;
+    /**
+     * @generated from protobuf field: ruthless.v1.Player sender = 3
+     */
+    sender?: Player;
+    /**
+     * @generated from protobuf field: ruthless.v1.Player receiver = 4
+     */
+    receiver?: Player;
+    /**
+     * @generated from protobuf field: google.protobuf.Timestamp created_at = 5
+     */
+    createdAt?: Timestamp;
+}
+/**
+ * @generated from protobuf message ruthless.v1.InviteFriendToSessionRequest
+ */
+export interface InviteFriendToSessionRequest {
+    /**
+     * @generated from protobuf field: string session_id = 1
+     */
+    sessionId: string;
+    /**
+     * @generated from protobuf field: string friend_identifier = 2
+     */
+    friendIdentifier: string; // format: name#suffix
+}
+/**
+ * @generated from protobuf message ruthless.v1.InviteFriendToSessionResponse
+ */
+export interface InviteFriendToSessionResponse {
+}
+/**
+ * @generated from protobuf message ruthless.v1.RespondToSessionInvitationRequest
+ */
+export interface RespondToSessionInvitationRequest {
+    /**
+     * @generated from protobuf field: string invitation_id = 1
+     */
+    invitationId: string;
+    /**
+     * @generated from protobuf field: bool accept = 2
+     */
+    accept: boolean;
+}
+/**
+ * @generated from protobuf message ruthless.v1.RespondToSessionInvitationResponse
+ */
+export interface RespondToSessionInvitationResponse {
+    /**
+     * @generated from protobuf field: string session_id = 1
+     */
+    sessionId: string; // returned on accept to auto-join UI
+}
+/**
+ * @generated from protobuf message ruthless.v1.ListSessionInvitationsRequest
+ */
+export interface ListSessionInvitationsRequest {
+    /**
+     * @generated from protobuf field: int32 page_size = 1
+     */
+    pageSize: number;
+    /**
+     * @generated from protobuf field: int32 page_number = 2
+     */
+    pageNumber: number;
+}
+/**
+ * @generated from protobuf message ruthless.v1.ListSessionInvitationsResponse
+ */
+export interface ListSessionInvitationsResponse {
+    /**
+     * @generated from protobuf field: repeated ruthless.v1.SessionInvitation invitations = 1
+     */
+    invitations: SessionInvitation[];
+    /**
+     * @generated from protobuf field: int32 total_count = 2
+     */
+    totalCount: number;
+}
 // ----------------- User Service -----------------
 
 /**
@@ -613,7 +710,7 @@ export interface RegisterRequest {
     /**
      * @generated from protobuf field: string name = 1
      */
-    name: string; // Optional, defaults to identity name if providing a name during register is still desired
+    name: string;
 }
 /**
  * @generated from protobuf message ruthless.v1.CompleteRegistrationRequest
@@ -783,6 +880,14 @@ export interface ListFriendsRequest {
      * @generated from protobuf field: int32 page_number = 2
      */
     pageNumber: number;
+    /**
+     * @generated from protobuf field: optional string exclude_from_session_id = 3
+     */
+    excludeFromSessionId?: string;
+    /**
+     * @generated from protobuf field: optional string filter = 4
+     */
+    filter?: string;
 }
 /**
  * @generated from protobuf message ruthless.v1.ListFriendsResponse
@@ -943,6 +1048,23 @@ export enum CardOrderField {
      */
     CREATED_AT = 2
 }
+/**
+ * @generated from protobuf enum ruthless.v1.SessionView
+ */
+export enum SessionView {
+    /**
+     * @generated from protobuf enum value: SESSION_VIEW_UNSPECIFIED = 0;
+     */
+    UNSPECIFIED = 0,
+    /**
+     * @generated from protobuf enum value: SESSION_VIEW_PUBLIC_WAITING = 1;
+     */
+    PUBLIC_WAITING = 1,
+    /**
+     * @generated from protobuf enum value: SESSION_VIEW_ACTIVE = 2;
+     */
+    ACTIVE = 2
+}
 // ----------------- Notification Service -----------------
 
 /**
@@ -956,7 +1078,11 @@ export enum NotificationType {
     /**
      * @generated from protobuf enum value: NOTIFICATION_TYPE_FRIENDS_PENDING_INVITATIONS = 1;
      */
-    FRIENDS_PENDING_INVITATIONS = 1
+    FRIENDS_PENDING_INVITATIONS = 1,
+    /**
+     * @generated from protobuf enum value: NOTIFICATION_TYPE_SESSION_INVITATIONS_PENDING = 2;
+     */
+    SESSION_INVITATIONS_PENDING = 2
 }
 // @generated message type with reflection information, may provide speed optimized methods
 class Card$Type extends MessageType<Card> {
@@ -3184,10 +3310,13 @@ export const AddDeckToSessionResponse = new AddDeckToSessionResponse$Type();
 // @generated message type with reflection information, may provide speed optimized methods
 class ListSessionsRequest$Type extends MessageType<ListSessionsRequest> {
     constructor() {
-        super("ruthless.v1.ListSessionsRequest", []);
+        super("ruthless.v1.ListSessionsRequest", [
+            { no: 1, name: "view", kind: "enum", T: () => ["ruthless.v1.SessionView", SessionView, "SESSION_VIEW_"] }
+        ]);
     }
     create(value?: PartialMessage<ListSessionsRequest>): ListSessionsRequest {
         const message = globalThis.Object.create((this.messagePrototype!));
+        message.view = 0;
         if (value !== undefined)
             reflectionMergePartial<ListSessionsRequest>(this, message, value);
         return message;
@@ -3197,6 +3326,9 @@ class ListSessionsRequest$Type extends MessageType<ListSessionsRequest> {
         while (reader.pos < end) {
             let [fieldNo, wireType] = reader.tag();
             switch (fieldNo) {
+                case /* ruthless.v1.SessionView view */ 1:
+                    message.view = reader.int32();
+                    break;
                 default:
                     let u = options.readUnknownField;
                     if (u === "throw")
@@ -3209,6 +3341,9 @@ class ListSessionsRequest$Type extends MessageType<ListSessionsRequest> {
         return message;
     }
     internalBinaryWrite(message: ListSessionsRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* ruthless.v1.SessionView view = 1; */
+        if (message.view !== 0)
+            writer.tag(1, WireType.Varint).int32(message.view);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
@@ -3351,6 +3486,386 @@ class LeaveSessionResponse$Type extends MessageType<LeaveSessionResponse> {
  * @generated MessageType for protobuf message ruthless.v1.LeaveSessionResponse
  */
 export const LeaveSessionResponse = new LeaveSessionResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class SessionInvitation$Type extends MessageType<SessionInvitation> {
+    constructor() {
+        super("ruthless.v1.SessionInvitation", [
+            { no: 1, name: "id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "session", kind: "message", T: () => Session },
+            { no: 3, name: "sender", kind: "message", T: () => Player },
+            { no: 4, name: "receiver", kind: "message", T: () => Player },
+            { no: 5, name: "created_at", kind: "message", T: () => Timestamp }
+        ]);
+    }
+    create(value?: PartialMessage<SessionInvitation>): SessionInvitation {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.id = "";
+        if (value !== undefined)
+            reflectionMergePartial<SessionInvitation>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: SessionInvitation): SessionInvitation {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string id */ 1:
+                    message.id = reader.string();
+                    break;
+                case /* ruthless.v1.Session session */ 2:
+                    message.session = Session.internalBinaryRead(reader, reader.uint32(), options, message.session);
+                    break;
+                case /* ruthless.v1.Player sender */ 3:
+                    message.sender = Player.internalBinaryRead(reader, reader.uint32(), options, message.sender);
+                    break;
+                case /* ruthless.v1.Player receiver */ 4:
+                    message.receiver = Player.internalBinaryRead(reader, reader.uint32(), options, message.receiver);
+                    break;
+                case /* google.protobuf.Timestamp created_at */ 5:
+                    message.createdAt = Timestamp.internalBinaryRead(reader, reader.uint32(), options, message.createdAt);
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: SessionInvitation, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string id = 1; */
+        if (message.id !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.id);
+        /* ruthless.v1.Session session = 2; */
+        if (message.session)
+            Session.internalBinaryWrite(message.session, writer.tag(2, WireType.LengthDelimited).fork(), options).join();
+        /* ruthless.v1.Player sender = 3; */
+        if (message.sender)
+            Player.internalBinaryWrite(message.sender, writer.tag(3, WireType.LengthDelimited).fork(), options).join();
+        /* ruthless.v1.Player receiver = 4; */
+        if (message.receiver)
+            Player.internalBinaryWrite(message.receiver, writer.tag(4, WireType.LengthDelimited).fork(), options).join();
+        /* google.protobuf.Timestamp created_at = 5; */
+        if (message.createdAt)
+            Timestamp.internalBinaryWrite(message.createdAt, writer.tag(5, WireType.LengthDelimited).fork(), options).join();
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message ruthless.v1.SessionInvitation
+ */
+export const SessionInvitation = new SessionInvitation$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class InviteFriendToSessionRequest$Type extends MessageType<InviteFriendToSessionRequest> {
+    constructor() {
+        super("ruthless.v1.InviteFriendToSessionRequest", [
+            { no: 1, name: "session_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "friend_identifier", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<InviteFriendToSessionRequest>): InviteFriendToSessionRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.sessionId = "";
+        message.friendIdentifier = "";
+        if (value !== undefined)
+            reflectionMergePartial<InviteFriendToSessionRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: InviteFriendToSessionRequest): InviteFriendToSessionRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string session_id */ 1:
+                    message.sessionId = reader.string();
+                    break;
+                case /* string friend_identifier */ 2:
+                    message.friendIdentifier = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: InviteFriendToSessionRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string session_id = 1; */
+        if (message.sessionId !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.sessionId);
+        /* string friend_identifier = 2; */
+        if (message.friendIdentifier !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.friendIdentifier);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message ruthless.v1.InviteFriendToSessionRequest
+ */
+export const InviteFriendToSessionRequest = new InviteFriendToSessionRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class InviteFriendToSessionResponse$Type extends MessageType<InviteFriendToSessionResponse> {
+    constructor() {
+        super("ruthless.v1.InviteFriendToSessionResponse", []);
+    }
+    create(value?: PartialMessage<InviteFriendToSessionResponse>): InviteFriendToSessionResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        if (value !== undefined)
+            reflectionMergePartial<InviteFriendToSessionResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: InviteFriendToSessionResponse): InviteFriendToSessionResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: InviteFriendToSessionResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message ruthless.v1.InviteFriendToSessionResponse
+ */
+export const InviteFriendToSessionResponse = new InviteFriendToSessionResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class RespondToSessionInvitationRequest$Type extends MessageType<RespondToSessionInvitationRequest> {
+    constructor() {
+        super("ruthless.v1.RespondToSessionInvitationRequest", [
+            { no: 1, name: "invitation_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "accept", kind: "scalar", T: 8 /*ScalarType.BOOL*/ }
+        ]);
+    }
+    create(value?: PartialMessage<RespondToSessionInvitationRequest>): RespondToSessionInvitationRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.invitationId = "";
+        message.accept = false;
+        if (value !== undefined)
+            reflectionMergePartial<RespondToSessionInvitationRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: RespondToSessionInvitationRequest): RespondToSessionInvitationRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string invitation_id */ 1:
+                    message.invitationId = reader.string();
+                    break;
+                case /* bool accept */ 2:
+                    message.accept = reader.bool();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: RespondToSessionInvitationRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string invitation_id = 1; */
+        if (message.invitationId !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.invitationId);
+        /* bool accept = 2; */
+        if (message.accept !== false)
+            writer.tag(2, WireType.Varint).bool(message.accept);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message ruthless.v1.RespondToSessionInvitationRequest
+ */
+export const RespondToSessionInvitationRequest = new RespondToSessionInvitationRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class RespondToSessionInvitationResponse$Type extends MessageType<RespondToSessionInvitationResponse> {
+    constructor() {
+        super("ruthless.v1.RespondToSessionInvitationResponse", [
+            { no: 1, name: "session_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<RespondToSessionInvitationResponse>): RespondToSessionInvitationResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.sessionId = "";
+        if (value !== undefined)
+            reflectionMergePartial<RespondToSessionInvitationResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: RespondToSessionInvitationResponse): RespondToSessionInvitationResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string session_id */ 1:
+                    message.sessionId = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: RespondToSessionInvitationResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string session_id = 1; */
+        if (message.sessionId !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.sessionId);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message ruthless.v1.RespondToSessionInvitationResponse
+ */
+export const RespondToSessionInvitationResponse = new RespondToSessionInvitationResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class ListSessionInvitationsRequest$Type extends MessageType<ListSessionInvitationsRequest> {
+    constructor() {
+        super("ruthless.v1.ListSessionInvitationsRequest", [
+            { no: 1, name: "page_size", kind: "scalar", T: 5 /*ScalarType.INT32*/ },
+            { no: 2, name: "page_number", kind: "scalar", T: 5 /*ScalarType.INT32*/ }
+        ]);
+    }
+    create(value?: PartialMessage<ListSessionInvitationsRequest>): ListSessionInvitationsRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.pageSize = 0;
+        message.pageNumber = 0;
+        if (value !== undefined)
+            reflectionMergePartial<ListSessionInvitationsRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ListSessionInvitationsRequest): ListSessionInvitationsRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* int32 page_size */ 1:
+                    message.pageSize = reader.int32();
+                    break;
+                case /* int32 page_number */ 2:
+                    message.pageNumber = reader.int32();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ListSessionInvitationsRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* int32 page_size = 1; */
+        if (message.pageSize !== 0)
+            writer.tag(1, WireType.Varint).int32(message.pageSize);
+        /* int32 page_number = 2; */
+        if (message.pageNumber !== 0)
+            writer.tag(2, WireType.Varint).int32(message.pageNumber);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message ruthless.v1.ListSessionInvitationsRequest
+ */
+export const ListSessionInvitationsRequest = new ListSessionInvitationsRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class ListSessionInvitationsResponse$Type extends MessageType<ListSessionInvitationsResponse> {
+    constructor() {
+        super("ruthless.v1.ListSessionInvitationsResponse", [
+            { no: 1, name: "invitations", kind: "message", repeat: 2 /*RepeatType.UNPACKED*/, T: () => SessionInvitation },
+            { no: 2, name: "total_count", kind: "scalar", T: 5 /*ScalarType.INT32*/ }
+        ]);
+    }
+    create(value?: PartialMessage<ListSessionInvitationsResponse>): ListSessionInvitationsResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.invitations = [];
+        message.totalCount = 0;
+        if (value !== undefined)
+            reflectionMergePartial<ListSessionInvitationsResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ListSessionInvitationsResponse): ListSessionInvitationsResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* repeated ruthless.v1.SessionInvitation invitations */ 1:
+                    message.invitations.push(SessionInvitation.internalBinaryRead(reader, reader.uint32(), options));
+                    break;
+                case /* int32 total_count */ 2:
+                    message.totalCount = reader.int32();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ListSessionInvitationsResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* repeated ruthless.v1.SessionInvitation invitations = 1; */
+        for (let i = 0; i < message.invitations.length; i++)
+            SessionInvitation.internalBinaryWrite(message.invitations[i], writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* int32 total_count = 2; */
+        if (message.totalCount !== 0)
+            writer.tag(2, WireType.Varint).int32(message.totalCount);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message ruthless.v1.ListSessionInvitationsResponse
+ */
+export const ListSessionInvitationsResponse = new ListSessionInvitationsResponse$Type();
 // @generated message type with reflection information, may provide speed optimized methods
 class RegisterRequest$Type extends MessageType<RegisterRequest> {
     constructor() {
@@ -4164,7 +4679,9 @@ class ListFriendsRequest$Type extends MessageType<ListFriendsRequest> {
     constructor() {
         super("ruthless.v1.ListFriendsRequest", [
             { no: 1, name: "page_size", kind: "scalar", T: 5 /*ScalarType.INT32*/ },
-            { no: 2, name: "page_number", kind: "scalar", T: 5 /*ScalarType.INT32*/ }
+            { no: 2, name: "page_number", kind: "scalar", T: 5 /*ScalarType.INT32*/ },
+            { no: 3, name: "exclude_from_session_id", kind: "scalar", opt: true, T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "filter", kind: "scalar", opt: true, T: 9 /*ScalarType.STRING*/ }
         ]);
     }
     create(value?: PartialMessage<ListFriendsRequest>): ListFriendsRequest {
@@ -4186,6 +4703,12 @@ class ListFriendsRequest$Type extends MessageType<ListFriendsRequest> {
                 case /* int32 page_number */ 2:
                     message.pageNumber = reader.int32();
                     break;
+                case /* optional string exclude_from_session_id */ 3:
+                    message.excludeFromSessionId = reader.string();
+                    break;
+                case /* optional string filter */ 4:
+                    message.filter = reader.string();
+                    break;
                 default:
                     let u = options.readUnknownField;
                     if (u === "throw")
@@ -4204,6 +4727,12 @@ class ListFriendsRequest$Type extends MessageType<ListFriendsRequest> {
         /* int32 page_number = 2; */
         if (message.pageNumber !== 0)
             writer.tag(2, WireType.Varint).int32(message.pageNumber);
+        /* optional string exclude_from_session_id = 3; */
+        if (message.excludeFromSessionId !== undefined)
+            writer.tag(3, WireType.LengthDelimited).string(message.excludeFromSessionId);
+        /* optional string filter = 4; */
+        if (message.filter !== undefined)
+            writer.tag(4, WireType.LengthDelimited).string(message.filter);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
@@ -4723,6 +5252,14 @@ export const SessionService = new ServiceType("ruthless.v1.SessionService", [
     { name: "GetSession", options: {}, I: GetSessionRequest, O: Session },
     { name: "AddDeckToSession", options: {}, I: AddDeckToSessionRequest, O: AddDeckToSessionResponse },
     { name: "ListSessions", options: {}, I: ListSessionsRequest, O: ListSessionsResponse }
+]);
+/**
+ * @generated ServiceType for protobuf service ruthless.v1.SessionInvitationService
+ */
+export const SessionInvitationService = new ServiceType("ruthless.v1.SessionInvitationService", [
+    { name: "InviteFriendToSession", options: {}, I: InviteFriendToSessionRequest, O: InviteFriendToSessionResponse },
+    { name: "RespondToSessionInvitation", options: {}, I: RespondToSessionInvitationRequest, O: RespondToSessionInvitationResponse },
+    { name: "ListSessionInvitations", options: {}, I: ListSessionInvitationsRequest, O: ListSessionInvitationsResponse }
 ]);
 /**
  * @generated ServiceType for protobuf service ruthless.v1.UserService

@@ -72,7 +72,8 @@ resource "google_compute_url_map" "url_map" {
         "/ruthless.v1.UserService/*",
         "/ruthless.v1.GameService/*",
         "/ruthless.v1.FriendService/*",
-        "/ruthless.v1.NotificationService/*"
+        "/ruthless.v1.NotificationService/*",
+        "/ruthless.v1.SessionInvitationService/*"
       ]
       service = google_compute_backend_service.backend_backend.id
     }

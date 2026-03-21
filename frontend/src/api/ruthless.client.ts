@@ -32,6 +32,13 @@ import { UserService } from "./ruthless";
 import type { GetMeRequest } from "./ruthless";
 import type { User } from "./ruthless";
 import type { CompleteRegistrationRequest } from "./ruthless";
+import { SessionInvitationService } from "./ruthless";
+import type { ListSessionInvitationsResponse } from "./ruthless";
+import type { ListSessionInvitationsRequest } from "./ruthless";
+import type { RespondToSessionInvitationResponse } from "./ruthless";
+import type { RespondToSessionInvitationRequest } from "./ruthless";
+import type { InviteFriendToSessionResponse } from "./ruthless";
+import type { InviteFriendToSessionRequest } from "./ruthless";
 import { SessionService } from "./ruthless";
 import type { ListSessionsResponse } from "./ruthless";
 import type { ListSessionsRequest } from "./ruthless";
@@ -338,6 +345,54 @@ export class SessionServiceClient implements ISessionServiceClient, ServiceInfo 
     listSessions(input: ListSessionsRequest, options?: RpcOptions): UnaryCall<ListSessionsRequest, ListSessionsResponse> {
         const method = this.methods[5], opt = this._transport.mergeOptions(options);
         return stackIntercept<ListSessionsRequest, ListSessionsResponse>("unary", this._transport, method, opt, input);
+    }
+}
+/**
+ * @generated from protobuf service ruthless.v1.SessionInvitationService
+ */
+export interface ISessionInvitationServiceClient {
+    /**
+     * @generated from protobuf rpc: InviteFriendToSession
+     */
+    inviteFriendToSession(input: InviteFriendToSessionRequest, options?: RpcOptions): UnaryCall<InviteFriendToSessionRequest, InviteFriendToSessionResponse>;
+    /**
+     * @generated from protobuf rpc: RespondToSessionInvitation
+     */
+    respondToSessionInvitation(input: RespondToSessionInvitationRequest, options?: RpcOptions): UnaryCall<RespondToSessionInvitationRequest, RespondToSessionInvitationResponse>;
+    /**
+     * @generated from protobuf rpc: ListSessionInvitations
+     */
+    listSessionInvitations(input: ListSessionInvitationsRequest, options?: RpcOptions): UnaryCall<ListSessionInvitationsRequest, ListSessionInvitationsResponse>;
+}
+/**
+ * @generated from protobuf service ruthless.v1.SessionInvitationService
+ */
+export class SessionInvitationServiceClient implements ISessionInvitationServiceClient, ServiceInfo {
+    typeName = SessionInvitationService.typeName;
+    methods = SessionInvitationService.methods;
+    options = SessionInvitationService.options;
+    constructor(private readonly _transport: RpcTransport) {
+    }
+    /**
+     * @generated from protobuf rpc: InviteFriendToSession
+     */
+    inviteFriendToSession(input: InviteFriendToSessionRequest, options?: RpcOptions): UnaryCall<InviteFriendToSessionRequest, InviteFriendToSessionResponse> {
+        const method = this.methods[0], opt = this._transport.mergeOptions(options);
+        return stackIntercept<InviteFriendToSessionRequest, InviteFriendToSessionResponse>("unary", this._transport, method, opt, input);
+    }
+    /**
+     * @generated from protobuf rpc: RespondToSessionInvitation
+     */
+    respondToSessionInvitation(input: RespondToSessionInvitationRequest, options?: RpcOptions): UnaryCall<RespondToSessionInvitationRequest, RespondToSessionInvitationResponse> {
+        const method = this.methods[1], opt = this._transport.mergeOptions(options);
+        return stackIntercept<RespondToSessionInvitationRequest, RespondToSessionInvitationResponse>("unary", this._transport, method, opt, input);
+    }
+    /**
+     * @generated from protobuf rpc: ListSessionInvitations
+     */
+    listSessionInvitations(input: ListSessionInvitationsRequest, options?: RpcOptions): UnaryCall<ListSessionInvitationsRequest, ListSessionInvitationsResponse> {
+        const method = this.methods[2], opt = this._transport.mergeOptions(options);
+        return stackIntercept<ListSessionInvitationsRequest, ListSessionInvitationsResponse>("unary", this._transport, method, opt, input);
     }
 }
 /**

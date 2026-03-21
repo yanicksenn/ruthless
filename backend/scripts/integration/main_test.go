@@ -114,5 +114,9 @@ func TestIntegration(t *testing.T) {
 		runNotificationTests(t, ctx, client, runID)
 	})
 
+	t.Run("SessionInvitationTests", func(t *testing.T) {
+		runSessionInvitationTests(t, ctx, client, runID)
+	})
+
 	t.Log("✅ All Integration Tests Passed!")
 }

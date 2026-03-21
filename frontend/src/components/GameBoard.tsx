@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { gameClient, sessionClient, deckClient, createOptions } from '../api/client';
+import { gameClient, sessionClient, deckClient, sessionInvitationClient, createOptions } from '../api/client';
 import { Game, GameState, Card, Session } from '../api/ruthless';
 import { useAuth } from '../context/AuthContext';
-import { ArrowLeft, Play, Crown, Check, Info, Users, Layers, LogOut } from 'lucide-react';
+import { ArrowLeft, Play, Crown, Check, Info, Users, Layers, LogOut, UserPlus } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { CreationDialog } from './CreationDialog';
+import { InviteFriendDialog } from './InviteFriendDialog';
 
 interface GameBoardProps {
   sessionId: string;
@@ -21,6 +23,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({ sessionId, onBack, onLeave
   const [loading, setLoading] = useState(true);
   const [decks, setDecks] = useState<{id: string, name: string}[]>([]);
   const [hoveredPlayId, setHoveredPlayId] = useState<string | null>(null);
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
 
   const isOwner = session?.ownerId === user?.id;
 
@@ -94,6 +97,16 @@ export const GameBoard: React.FC<GameBoardProps> = ({ sessionId, onBack, onLeave
       await gameClient.selectWinner({ gameId: game.id, playId }, createOptions(token));
       fetchData();
     } catch (err) { console.error(err); }
+  };
+
+  const handleInvite = async (identifier: string) => {
+    try {
+      await sessionInvitationClient.inviteFriendToSession({ sessionId, friendIdentifier: identifier }, createOptions(token));
+      alert('Invitation sent!');
+      setIsInviteModalOpen(false);
+    } catch (err: any) {
+      alert(`Failed to send invitation: ${err.message || 'Unknown error'}`);
+    }
   };
 
   if (loading && !session) return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
@@ -243,6 +256,16 @@ export const GameBoard: React.FC<GameBoardProps> = ({ sessionId, onBack, onLeave
                     <h3 className="flex items-center gap-2 font-black uppercase text-xs tracking-widest text-gray-500">
                       <Users size={14} /> Joined Players ({session?.playerIds.length || 0})
                     </h3>
+                    
+                    {isOwner && (
+                       <button 
+                         onClick={() => setIsInviteModalOpen(true)} 
+                         className="w-full bg-white/5 hover:bg-white/10 p-3 rounded-xl border border-white/10 text-xs font-bold transition-all text-white flex items-center justify-center gap-2"
+                       >
+                         <UserPlus size={16} /> INVITE FRIEND
+                       </button>
+                    )}
+
                     <div className="grid grid-cols-2 gap-2">
                        {(game.players || []).map(p => (
                          <div key={p.id} className="p-3 rounded-xl bg-white/5 border border-white/10 text-xs font-bold flex items-center justify-between">
@@ -412,6 +435,13 @@ export const GameBoard: React.FC<GameBoardProps> = ({ sessionId, onBack, onLeave
            </div>
         )}
       </main>
+
+      <InviteFriendDialog
+        isOpen={isInviteModalOpen}
+        onClose={() => setIsInviteModalOpen(false)}
+        onInvite={handleInvite}
+        excludeFromSessionId={sessionId}
+      />
     </div>
   );
 };

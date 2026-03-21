@@ -12,6 +12,7 @@ go_test(
         "main_test.go",
         "notification_test.go",
         "session_list_test.go",
+        "session_invitation_test.go",
         "visibility_test.go",
     ],
     importpath = "github.com/yanicksenn/ruthless/backend/scripts/integration",

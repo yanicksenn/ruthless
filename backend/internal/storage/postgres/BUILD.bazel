@@ -2,7 +2,10 @@ load("@rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "postgres",
-    srcs = ["postgres.go"],
+    srcs = [
+        "postgres.go",
+        "session_invitations.go",
+    ],
     embedsrcs = glob(["migrations/*.sql"]),
     importpath = "github.com/yanicksenn/ruthless/backend/internal/storage/postgres",
     visibility = ["//visibility:public"],

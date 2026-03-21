@@ -22,7 +22,8 @@ type Storage struct {
 	revokedTokens map[string]time.Time
 	invitations   map[string]*pb.FriendInvitation
 	friendships   map[string]map[string]time.Time // userID -> friendID -> createdAt
-	notifications map[string]map[pb.NotificationType]int32 // userID -> type -> count
+	notifications      map[string]map[pb.NotificationType]int32 // userID -> type -> count
+	sessionInvitations map[string]*pb.SessionInvitation
 }
 
 func New() *Storage {
@@ -34,8 +35,9 @@ func New() *Storage {
 		games:    make(map[string]*pb.Game),
 		revokedTokens: make(map[string]time.Time),
 		invitations:   make(map[string]*pb.FriendInvitation),
-		friendships:   make(map[string]map[string]time.Time),
-		notifications: make(map[string]map[pb.NotificationType]int32),
+		friendships:        make(map[string]map[string]time.Time),
+		notifications:      make(map[string]map[pb.NotificationType]int32),
+		sessionInvitations: make(map[string]*pb.SessionInvitation),
 	}
 }
 
@@ -644,7 +646,7 @@ func (s *Storage) DeleteFriendship(ctx context.Context, userID, friendID string)
 	return nil
 }
 
-func (s *Storage) ListFriends(ctx context.Context, userID string, pageSize, pageNumber int32) ([]*pb.Player, int32, error) {
+func (s *Storage) ListFriends(ctx context.Context, userID string, excludeSessionID string, filter string, pageSize, pageNumber int32) ([]*pb.Player, int32, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -656,13 +658,43 @@ func (s *Storage) ListFriends(ctx context.Context, userID string, pageSize, page
 	var friends []*pb.Player
 	for fID := range friendsMap {
 		user, ok := s.users[fID]
-		if ok {
-			friends = append(friends, &pb.Player{
-				Id:         user.Id,
-				Name:       user.Name,
-				Identifier: user.Identifier,
-			})
+		if !ok {
+			continue
 		}
+
+		if excludeSessionID != "" {
+			inSession := false
+			if sess, ok := s.sessions[excludeSessionID]; ok {
+				for _, pid := range sess.PlayerIds {
+					if pid == fID {
+						inSession = true
+						break
+					}
+				}
+			}
+			for _, inv := range s.sessionInvitations {
+				if inv.Session.Id == excludeSessionID && inv.Receiver.Id == fID {
+					inSession = true
+					break
+				}
+			}
+			if inSession {
+				continue
+			}
+		}
+
+		if filter != "" {
+			filterLower := strings.ToLower(filter)
+			if !strings.Contains(strings.ToLower(user.Name), filterLower) {
+				continue
+			}
+		}
+
+		friends = append(friends, &pb.Player{
+			Id:         user.Id,
+			Name:       user.Name,
+			Identifier: user.Identifier,
+		})
 	}
 
 	sort.Slice(friends, func(i, j int) bool {
@@ -725,6 +757,106 @@ func (s *Storage) GetNotifications(ctx context.Context, userID string) ([]*pb.No
 		}
 	}
 	return notifs, nil
+}
+
+func (s *Storage) CreateSessionInvitation(ctx context.Context, sessionID, senderID, receiverID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for _, inv := range s.sessionInvitations {
+		if inv.Session.Id == sessionID && inv.Receiver.Id == receiverID {
+			return storage.ErrAlreadyExists
+		}
+	}
+
+	sender, ok := s.users[senderID]
+	if !ok {
+		return storage.ErrNotFound
+	}
+	receiver, ok := s.users[receiverID]
+	if !ok {
+		return storage.ErrNotFound
+	}
+	session, ok := s.sessions[sessionID]
+	if !ok {
+		return storage.ErrNotFound
+	}
+
+	id := time.Now().Format(time.RFC3339Nano)
+	invitation := &pb.SessionInvitation{
+		Id:      id,
+		Session: session,
+		Sender: &pb.Player{
+			Id:         sender.Id,
+			Name:       sender.Name,
+			Identifier: sender.Identifier,
+		},
+		Receiver: &pb.Player{
+			Id:         receiver.Id,
+			Name:       receiver.Name,
+			Identifier: receiver.Identifier,
+		},
+		CreatedAt: timestamppb.Now(),
+	}
+	s.sessionInvitations[id] = invitation
+	return nil
+}
+
+func (s *Storage) GetSessionInvitation(ctx context.Context, id string) (*pb.SessionInvitation, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	inv, ok := s.sessionInvitations[id]
+	if !ok {
+		return nil, storage.ErrNotFound
+	}
+	return inv, nil
+}
+
+func (s *Storage) DeleteSessionInvitation(ctx context.Context, id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.sessionInvitations, id)
+	return nil
+}
+
+func (s *Storage) ListSessionInvitations(ctx context.Context, receiverID string, pageSize, pageNumber int32) ([]*pb.SessionInvitation, int32, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var invitations []*pb.SessionInvitation
+	for _, inv := range s.sessionInvitations {
+		if inv.Receiver.Id == receiverID {
+			invitations = append(invitations, inv)
+		}
+	}
+	sort.Slice(invitations, func(i, j int) bool {
+		return invitations[i].CreatedAt.AsTime().After(invitations[j].CreatedAt.AsTime())
+	})
+
+	totalCount := int32(len(invitations))
+	if pageSize <= 0 {
+		return invitations, totalCount, nil
+	}
+	start := (pageNumber - 1) * pageSize
+	if start >= totalCount {
+		return []*pb.SessionInvitation{}, totalCount, nil
+	}
+	end := start + pageSize
+	if end > totalCount {
+		end = totalCount
+	}
+	return invitations[start:end], totalCount, nil
+}
+
+func (s *Storage) DeleteUnansweredSessionInvitations(ctx context.Context, sessionID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for id, inv := range s.sessionInvitations {
+		if inv.Session.Id == sessionID {
+			// Instead of modifying map while iterating, delete is safe in Go over maps, but let's be explicitly safe.
+			delete(s.sessionInvitations, id)
+		}
+	}
+	return nil
 }
 
 // Ensure Storage implements storage.Storage at compile time.

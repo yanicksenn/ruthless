@@ -91,7 +91,9 @@ func (s *Server) ListFriends(ctx context.Context, req *pb.ListFriendsRequest) (*
 		return nil, status.Error(codes.Unauthenticated, "unauthenticated")
 	}
 
-	friends, totalCount, err := s.store.ListFriends(ctx, player.Id, req.PageSize, req.PageNumber)
+	excludeSessionID := req.GetExcludeFromSessionId()
+	filter := req.GetFilter()
+	friends, totalCount, err := s.store.ListFriends(ctx, player.Id, excludeSessionID, filter, req.PageSize, req.PageNumber)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to list friends: %v", err)
 	}

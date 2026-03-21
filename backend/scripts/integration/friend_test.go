@@ -65,6 +65,24 @@ func runFriendTests(t *testing.T, ctx context.Context, client *testutil.TestClie
 		t.Error("Bob not found in Alice's friends list")
 	}
 
+	// 5.5. Alice lists friends with filter
+	filterStr := "ob" // Bob matches
+	friendsFiltered, err := client.FriendClient.ListFriends(aliceCtx, &pb.ListFriendsRequest{
+		Filter: &filterStr,
+	})
+	testutil.AssertSuccess(t, err, "ListFriends with Filter Alice")
+	found = false
+	for _, f := range friendsFiltered.Friends {
+		if f.Id == "Bob" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("Bob not found with filter 'ob'")
+	}
+
+
 	// 6. Bob lists friends
 	friendsRes, err = client.FriendClient.ListFriends(bobCtx, &pb.ListFriendsRequest{})
 	testutil.AssertSuccess(t, err, "ListFriends Bob")

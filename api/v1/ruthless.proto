@@ -241,7 +241,15 @@ message AddDeckToSessionRequest {
 }
 message AddDeckToSessionResponse {}
 
-message ListSessionsRequest {}
+enum SessionView {
+  SESSION_VIEW_UNSPECIFIED = 0;
+  SESSION_VIEW_PUBLIC_WAITING = 1;
+  SESSION_VIEW_ACTIVE = 2;
+}
+
+message ListSessionsRequest {
+  SessionView view = 1;
+}
 message ListSessionsResponse {
   repeated Session sessions = 1;
 }
@@ -260,10 +268,49 @@ service SessionService {
   rpc ListSessions (ListSessionsRequest) returns (ListSessionsResponse);
 }
 
+// ----------------- Session Invitation Service -----------------
+
+message SessionInvitation {
+  string id = 1;
+  Session session = 2;
+  Player sender = 3;
+  Player receiver = 4;
+  google.protobuf.Timestamp created_at = 5;
+}
+
+message InviteFriendToSessionRequest {
+  string session_id = 1;
+  string friend_identifier = 2; // format: name#suffix
+}
+message InviteFriendToSessionResponse {}
+
+message RespondToSessionInvitationRequest {
+  string invitation_id = 1;
+  bool accept = 2;
+}
+message RespondToSessionInvitationResponse {
+  string session_id = 1; // returned on accept to auto-join UI
+}
+
+message ListSessionInvitationsRequest {
+  int32 page_size = 1;
+  int32 page_number = 2;
+}
+message ListSessionInvitationsResponse {
+  repeated SessionInvitation invitations = 1;
+  int32 total_count = 2;
+}
+
+service SessionInvitationService {
+  rpc InviteFriendToSession (InviteFriendToSessionRequest) returns (InviteFriendToSessionResponse);
+  rpc RespondToSessionInvitation (RespondToSessionInvitationRequest) returns (RespondToSessionInvitationResponse);
+  rpc ListSessionInvitations (ListSessionInvitationsRequest) returns (ListSessionInvitationsResponse);
+}
+
 // ----------------- User Service -----------------
 
 message RegisterRequest {
-  string name = 1; // Optional, defaults to identity name if providing a name during register is still desired
+  string name = 1;
 }
 
 message CompleteRegistrationRequest {
@@ -344,6 +391,8 @@ message RespondToInvitationResponse {}
 message ListFriendsRequest {
   int32 page_size = 1;
   int32 page_number = 2;
+  optional string exclude_from_session_id = 3;
+  optional string filter = 4;
 }
 message ListFriendsResponse {
   repeated Player friends = 1;
@@ -377,6 +426,7 @@ service FriendService {
 enum NotificationType {
   NOTIFICATION_TYPE_UNSPECIFIED = 0;
   NOTIFICATION_TYPE_FRIENDS_PENDING_INVITATIONS = 1;
+  NOTIFICATION_TYPE_SESSION_INVITATIONS_PENDING = 2;
 }
 
 message Notification {

@@ -57,6 +57,13 @@ type Storage interface {
 	CountDecksByOwner(ctx context.Context, ownerID string) (int32, error)
 	CountSessionsByOwner(ctx context.Context, ownerID string) (int32, error)
 
+	// Session Invitation operations
+	CreateSessionInvitation(ctx context.Context, sessionID, senderID, receiverID string) error
+	GetSessionInvitation(ctx context.Context, id string) (*pb.SessionInvitation, error)
+	DeleteSessionInvitation(ctx context.Context, id string) error
+	ListSessionInvitations(ctx context.Context, receiverID string, pageSize, pageNumber int32) ([]*pb.SessionInvitation, int32, error)
+	DeleteUnansweredSessionInvitations(ctx context.Context, sessionID string) error
+
 	// Friend and invitation operations
 	CreateInvitation(ctx context.Context, senderID, receiverID string) error
 	GetInvitation(ctx context.Context, id string) (*pb.FriendInvitation, error)
@@ -64,7 +71,7 @@ type Storage interface {
 	ListInvitations(ctx context.Context, receiverID string, pageSize, pageNumber int32) ([]*pb.FriendInvitation, int32, error)
 	CreateFriendship(ctx context.Context, userID, friendID string) error
 	DeleteFriendship(ctx context.Context, userID, friendID string) error
-	ListFriends(ctx context.Context, userID string, pageSize, pageNumber int32) ([]*pb.Player, int32, error)
+	ListFriends(ctx context.Context, userID string, excludeSessionID string, filter string, pageSize, pageNumber int32) ([]*pb.Player, int32, error)
 
 	// Notification operations
 	IncrementNotificationCounter(ctx context.Context, userID string, notificationType pb.NotificationType) error

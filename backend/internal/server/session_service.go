@@ -177,6 +177,8 @@ func (s *Server) LeaveSession(ctx context.Context, req *pb.LeaveSessionRequest) 
 		if session.OwnerId == player.Id && game.State == pb.GameState_GAME_STATE_WAITING {
 			game.State = pb.GameState_GAME_STATE_ABANDONED
 			session.PlayerIds = []string{} // Clear participants
+			// The game left WAITING state, delete unanswered invitations
+			_ = s.store.DeleteUnansweredSessionInvitations(ctx, session.Id)
 		} else {
 			domain.RemovePlayerFromSession(session, player.Id)
 			domain.HandlePlayerLeave(game, player.Id)
@@ -264,7 +266,34 @@ func (s *Server) ListSessions(ctx context.Context, req *pb.ListSessionsRequest) 
 		return nil, status.Errorf(codes.Internal, "failed to list sessions")
 	}
 
-	return &pb.ListSessionsResponse{Sessions: sessions}, nil
+	var filtered []*pb.Session
+	for _, sess := range sessions {
+		game, err := s.store.GetGameBySession(ctx, sess.Id)
+		if err != nil {
+			continue // Should not happen realistically
+		}
+
+		isParticipant := false
+		for _, pid := range sess.PlayerIds {
+			if pid == player.Id {
+				isParticipant = true
+				break
+			}
+		}
+
+		if req.View == pb.SessionView_SESSION_VIEW_ACTIVE {
+			if isParticipant && (game.State == pb.GameState_GAME_STATE_WAITING || game.State == pb.GameState_GAME_STATE_PLAYING || game.State == pb.GameState_GAME_STATE_JUDGING) {
+				filtered = append(filtered, sess)
+			}
+		} else {
+			// pb.SessionView_SESSION_VIEW_PUBLIC_WAITING (default)
+			if game.State == pb.GameState_GAME_STATE_WAITING {
+				filtered = append(filtered, sess)
+			}
+		}
+	}
+
+	return &pb.ListSessionsResponse{Sessions: filtered}, nil
 }
 
 func (s *Server) syncSessionToGame(ctx context.Context, session *pb.Session) error {
